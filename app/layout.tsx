@@ -1,22 +1,19 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import "./globals.css"; // 👈 Обязательно возвращаем стили, иначе дизайн сломается
+import "./globals.css";
 
-// 1. Подключаем твой шрифт
-// Убедись, что файл называется именно так и лежит в папке public/fonts
-const myFont = localFont({
-  src: "../public/fonts/FoglihtenNo06_076.otf", // Проверь название файла!
-  display: "swap",
+// Подключаем твой шрифт Foglihten
+const customFont = localFont({
+  src: "../public/fonts/FoglihtenNo06_076.otf", // Путь к файлу внутри папки app/fonts
   variable: "--font-custom",
+  display: "swap",
 });
 
-// 2. Метаданные (Заголовок вкладки браузера)
 export const metadata: Metadata = {
   title: "Linkalink",
   description: "Сервис онлайн-записи",
 };
 
-// 3. Сам Layout
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={myFont.className}>
+      {/* 
+         className={customFont.className} -> Применяет твой шрифт ко всему сайту
+         tracking-widest -> Сильно увеличивает расстояние между буквами
+      */}
+      <body className={`${customFont.className} tracking-widest antialiased`}>
         {children}
       </body>
     </html>
