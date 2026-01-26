@@ -1,106 +1,53 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import { Bebas_Neue } from 'next/font/google'; 
-import { Instagram, Send } from "lucide-react";
+import { Send, Instagram } from "lucide-react"; // Send = иконка Telegram
 import BookingWidget from "@/components/BookingWidget";
 
-const bebas = Bebas_Neue({ weight: '400', subsets: ['latin'] });
-
-export default async function BusinessPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function BusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  // 1. Получаем данные
-  const { data: business, error } = await supabase
-    .from("businesses")
-    .select("*")
-    .eq("slug", slug)
-    .single();
+  const { data: business, error } = await supabase.from("businesses").select("*").eq("slug", slug).single();
+  if (error || !business) notFound();
 
-  if (error || !business) {
-    notFound();
-  }
+  const { data: masters } = await supabase.from("masters").select("*").eq("business_id", business.id);
 
-  // Получаем мастеров
-  const { data: masters } = await supabase
-    .from("masters")
-    .select("*")
-    .eq("business_id", business.id);
-
-  const services = business.services as any[];
-
-  // 2. Картинки (берем из базы или ставим заглушки)
-  const defaultBg = "https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&w=1000";
-  const bgImage = business.bg_image || defaultBg;
-
-  // Аватарка из базы (или генератор)
-  const avatarUrl = business.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}&background=000&color=fff`;
-  
-  // Шапка (если нет в базе - просто черный градиент)
-  const headerUrl = business.header_url || defaultBg;
+  const bgImage = business.bg_image || "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1000";
+  const avatarUrl = business.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}`;
 
   return (
-    <div 
-      className="min-h-screen flex justify-center font-sans bg-fixed bg-cover bg-center"
-      style={{ backgroundImage: `url('${bgImage}')` }}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[5px] z-0"></div>
+    <div className="min-h-screen flex justify-center bg-fixed bg-cover bg-center" style={{ backgroundImage: `url('${bgImage}')` }}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-0"></div>
 
-      {/* Контейнер приложения */}
-      <main className="w-full max-w-[480px] min-h-screen z-10 bg-transparent flex flex-col relative shadow-2xl overflow-hidden">
+      <main className="w-full max-w-[480px] min-h-screen z-10 flex flex-col relative pt-12">
         
-        {/* --- ШАПКА (HEADER) --- */}
-        <div 
-            className="h-48 bg-cover bg-center relative"
-            style={{ backgroundImage: `url('${headerUrl}')` }}
-        >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-        </div>
+        {/* --- ПРОФИЛЬ (Без шапки) --- */}
+        <div className="px-6 flex flex-col items-center text-center">
+            <img src={avatarUrl} alt={business.name} className="w-28 h-28 rounded-full border-2 border-white/50 shadow-2xl object-cover mb-4" />
 
-        {/* --- ПРОФИЛЬ (Аватар + Текст) --- */}
-        <div className="px-6 -mt-16 relative flex flex-col items-center text-center">
-            {/* Аватарка (Круглая с белой обводкой) */}
-            <div className="w-32 h-32 rounded-full border-4 border-white/20 shadow-2xl overflow-hidden mb-4">
-                <img src={avatarUrl} alt={business.name} className="w-full h-full object-cover" />
-            </div>
-
-            {/* Название (Шрифт BEBAS NEUE, Заглавные) */}
-            <h1 className={`${bebas.className} text-5xl text-white tracking-wider drop-shadow-lg uppercase leading-none mb-2`}>
-                {business.name}
-            </h1>
+            <h1 className="text-4xl text-white font-bold tracking-wider uppercase mb-1">{business.name}</h1>
             
-            <p className="text-white/70 text-sm font-medium max-w-[80%] mb-6 leading-relaxed">
-                {business.description}
+            {/* СЛОГАН (Описание бизнеса из базы) */}
+            <p className="text-white/60 text-sm font-medium mb-6">
+                {business.description || "Барбершоп, который слышит"}
             </p>
 
-            {/* --- СОЦСЕТИ (Без кружков) --- */}
-            <div className="flex gap-8 items-center justify-center mb-8">
+            {/* --- СОЦСЕТИ (Телеграм и Инстаграм без фона) --- */}
+            <div className="flex gap-8 items-center justify-center mb-10">
                 {business.telegram && (
-                    <a href={`https://t.me/${business.telegram}`} target="_blank" className="text-white/80 hover:text-white transition transform hover:scale-110">
-                        <Send size={28} />
+                    <a href={`https://t.me/${business.telegram}`} target="_blank" className="text-white hover:text-gray-300 transition transform hover:scale-110">
+                        <Send size={30} />
                     </a>
                 )}
-                {/* Инстаграм (просто ссылка, можно добавить поле в базу позже) */}
-                <a href="#" className="text-white/80 hover:text-white transition transform hover:scale-110">
-                    <Instagram size={28} />
+                {/* Если нет Инсты в базе, пока скроем, чтобы было чисто */}
+                <a href="#" className="text-white hover:text-gray-300 transition transform hover:scale-110">
+                    <Instagram size={30} />
                 </a>
             </div>
         </div>
 
-        {/* --- ВИДЖЕТ ЗАПИСИ --- */}
+        {/* --- ВИДЖЕТ --- */}
         <div className="flex-1 pb-10">
-           <BookingWidget 
-             services={services} 
-             masters={masters || []} 
-             businessName={business.name} 
-           />
-        </div>
-
-        <div className="text-center text-white/20 text-xs pb-6">
-          Linkalink © 2026
+           <BookingWidget services={business.services} masters={masters || []} businessName={business.name} />
         </div>
 
       </main>
