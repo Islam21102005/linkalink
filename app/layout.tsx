@@ -5,7 +5,7 @@ import "./globals.css"; // 👈 Обязательно возвращаем ст
 // 1. Подключаем твой шрифт
 // Убедись, что файл называется именно так и лежит в папке public/fonts
 const myFont = localFont({
-  src: "../public/fonts/MyCustomFont.woff2", // Проверь название файла!
+  src: "../public/fonts/FoglihtenNo06_076.otf", // Проверь название файла!
   display: "swap",
   variable: "--font-custom",
 });
