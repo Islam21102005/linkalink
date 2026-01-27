@@ -13,6 +13,29 @@ export default function BookingWidget({ services, masters, businessName }: any) 
   const emptyForm = { service: "", price: "", master: "", date: "", time: "", name: "", phone: "" };
   const [formData, setFormData] = useState(emptyForm);
 
+  // --- ФУНКЦИЯ МАСКИ ТЕЛЕФОНА ---
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value.replace(/\D/g, ""); // Убираем всё кроме цифр
+    
+    // Если начали вводить с 8 или 7, убираем первую цифру, чтобы не дублировать код страны
+    if (input.startsWith("7") || input.startsWith("8")) {
+      input = input.slice(1);
+    }
+    
+    // Ограничиваем длину (10 цифр после +7)
+    if (input.length > 10) input = input.slice(0, 10);
+
+    // Формируем красивую строку +7 (XXX) ...
+    let formatted = "";
+    if (input.length >= 0) formatted = "+7";
+    if (input.length > 0) formatted += " (" + input.slice(0, 3);
+    if (input.length >= 4) formatted += ") " + input.slice(3, 6);
+    if (input.length >= 7) formatted += "-" + input.slice(6, 8);
+    if (input.length >= 9) formatted += "-" + input.slice(8, 10);
+
+    setFormData(prev => ({ ...prev, phone: formatted }));
+  };
+
   const closeAndReset = () => {
     setIsOpen(false);
     setFormData(emptyForm);
@@ -49,7 +72,15 @@ export default function BookingWidget({ services, masters, businessName }: any) 
 
   const handleBook = async () => {
     setLoading(true);
-    await fetch("/api/telegram", { method: "POST", body: JSON.stringify({ ...formData, businessName }) });
+    await fetch("/api/telegram", { 
+      method: "POST", 
+      body: JSON.stringify({ 
+        ...formData, 
+        businessName,
+        clientName: formData.name, // Явно передаем имя как clientName
+        clientPhone: formData.phone 
+      }) 
+    });
     setLoading(false);
     setStep(4);
   };
@@ -58,6 +89,9 @@ export default function BookingWidget({ services, masters, businessName }: any) 
     setIsOpen(true);
     setStep(s === 3 && (!formData.service || !formData.master) ? 1 : s);
   };
+
+  // Валидация телефона: +7 (XXX) XXX-XX-XX — это 18 символов
+  const isPhoneValid = formData.phone.length === 18;
 
   if (!isOpen) {
     return (
@@ -143,9 +177,25 @@ export default function BookingWidget({ services, masters, businessName }: any) 
                 )}
                 {formData.time && (
                     <div className="absolute bottom-8 left-8 right-8 space-y-3 bg-white pt-4">
-                        <input type="text" placeholder="ИМЯ" className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" onChange={e => setFormData(p => ({...p, name: e.target.value}))} />
-                        <input type="tel" placeholder="ТЕЛЕФОН" className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" onChange={e => setFormData(p => ({...p, phone: e.target.value}))} />
-                        <button onClick={handleBook} disabled={!formData.name || !formData.phone || loading} className="w-full h-16 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="ИМЯ" 
+                          className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" 
+                          value={formData.name}
+                          onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
+                        />
+                        <input 
+                          type="tel" 
+                          placeholder="+7 (___) ___-__-__" 
+                          className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" 
+                          value={formData.phone}
+                          onChange={handlePhoneChange} // Используем нашу маску
+                        />
+                        <button 
+                          onClick={handleBook} 
+                          disabled={!formData.name || !isPhoneValid || loading} 
+                          className="w-full h-16 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             {loading && <Loader2 className="animate-spin" size={18} />}
                             {loading ? "Запись..." : "Подтвердить"}
                         </button>
