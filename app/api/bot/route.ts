@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Заставляем Vercel обрабатывать этот файл как динамический API
+// 1. Настройка Next.js: всегда динамический, никогда не кэшировать
 export const dynamic = 'force-dynamic';
 
 const supabase = createClient(
@@ -12,77 +12,104 @@ const supabase = createClient(
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.TELEGRAM_CHAT_ID;
 
-export async function POST(req: NextRequest) {
+// 2. Метод GET (Чтобы проверить в браузере)
+export async function GET() {
+  return NextResponse.json({ 
+    status: "Bot API is running correctly!",
+    env_check: {
+      hasToken: !!TOKEN,
+      hasAdminId: !!ADMIN_ID
+    }
+  });
+}
+
+// 3. Метод POST (Для самого Телеграма)
+export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("Incoming Telegram Update:", JSON.stringify(body)); // Логируем входящие
 
-    // 1. Извлекаем ID чата
+    // Определяем ID чата (из сообщения или нажатия кнопки)
     const chatId = body.message?.chat.id || body.callback_query?.from.id;
+    const text = body.message?.text;
 
-    // 2. Проверка безопасности: только админ может управлять
+    // --- ПРОВЕРКА БЕЗОПАСНОСТИ ---
+    // Если пишет не админ — игнорируем
     if (!chatId || String(chatId) !== String(ADMIN_ID)) {
+      console.log(`Unauthorized access attempt from ID: ${chatId}`);
       return NextResponse.json({ ok: true });
     }
 
-    // 3. Обработка команды /admin
-    if (body.message?.text === '/admin') {
-      const { data: masters } = await supabase.from('masters').select('*');
+    // --- ЛОГИКА: КОМАНДА /admin ---
+    if (text === '/admin') {
+      const { data: masters, error } = await supabase.from('masters').select('*');
       
-      const keyboard = masters?.map(m => ([{
-        text: `${m.name} [${m.on_duty ? '✅ НА СМЕНЕ' : '❌ ВЫХОДНОЙ'}]`,
-        callback_data: `toggle_${m.id}_${m.on_duty}`
-      }]));
+      if (error) {
+        console.error("Supabase Error:", error);
+        await sendMessage(chatId, "Ошибка получения данных из базы.");
+        return NextResponse.json({ ok: true });
+      }
 
-      await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: ADMIN_ID,
-          text: "⚡️ Управление сменами мастеров:",
-          reply_markup: { inline_keyboard: keyboard }
-        }),
-      });
+      if (!masters || masters.length === 0) {
+        await sendMessage(chatId, "Мастера не найдены в базе.");
+        return NextResponse.json({ ok: true });
+      }
+
+      // Формируем кнопки
+      const keyboard = {
+        inline_keyboard: masters.map((m) => [{
+          text: `${m.name} ${m.on_duty ? '🟢' : '🔴'}`,
+          callback_data: `toggle_${m.id}_${m.on_duty}`
+        }])
+      };
+
+      await sendMessage(chatId, "Управление сменами:", keyboard);
     }
 
-    // 4. Обработка кнопок (Callback Query)
+    // --- ЛОГИКА: НАЖАТИЕ КНОПКИ ---
     if (body.callback_query) {
-      const callbackData = body.callback_query.data;
-      const [action, id, currentStatus] = callbackData.split('_');
-      const newStatus = currentStatus === 'true' ? false : true;
+      const { data } = body.callback_query;
+      const [action, id, currentStatus] = data.split('_');
 
       if (action === 'toggle') {
-        // Обновляем статус в базе данных
+        const newStatus = currentStatus === 'true' ? false : true;
+
+        // Обновляем базу
         await supabase.from('masters').update({ on_duty: newStatus }).eq('id', id);
 
-        // Получаем обновленный список мастеров
+        // Обновляем кнопки, чтобы видно было изменение
         const { data: masters } = await supabase.from('masters').select('*');
-        const keyboard = masters?.map(m => ([{
-          text: `${m.name} [${m.on_duty ? '✅ НА СМЕНЕ' : '❌ ВЫХОДНОЙ'}]`,
-          callback_data: `toggle_${m.id}_${m.on_duty}`
-        }]));
+        const keyboard = {
+          inline_keyboard: masters?.map((m) => [{
+            text: `${m.name} ${m.on_duty ? '🟢' : '🔴'}`,
+            callback_data: `toggle_${m.id}_${m.on_duty}`
+          }])
+        };
 
-        // Обновляем кнопки в том же сообщении
-        await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: ADMIN_ID,
-            message_id: body.callback_query.message.message_id,
-            reply_markup: { inline_keyboard: keyboard }
-          }),
-        });
+        await editMessage(chatId, body.callback_query.message.message_id, "Статус обновлен:", keyboard);
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Bot Error:', error);
-    // Всегда возвращаем ok для ТГ, чтобы он не слал повторные запросы при ошибках
+    console.error("Server Error:", error);
     return NextResponse.json({ ok: true });
   }
 }
 
-// Пустой GET, чтобы Vercel не ругался при сборке
-export async function GET() {
-  return NextResponse.json({ status: "Bot is active" });
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+async function sendMessage(chat_id: string | number, text: string, reply_markup?: any) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id, text, reply_markup }),
+  });
+}
+
+async function editMessage(chat_id: string | number, message_id: number, text: string, reply_markup?: any) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id, message_id, text, reply_markup }),
+  });
 }
