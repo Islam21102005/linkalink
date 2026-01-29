@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import { Instagram, Send, Phone } from "lucide-react"; 
+// Иконки здесь больше не нужны, они внутри TrackingSocials
 import BookingWidget from "@/components/BookingWidget";
 import AboutWidget from "@/components/AboutWidget";
-import PromotionsWidget from "@/components/PromotionsWidget"; // 👈 Импортируем новый виджет
+import PromotionsWidget from "@/components/PromotionsWidget";
+import TrackingSocials from "@/components/TrackingSocials"; // 👈 1. ИМПОРТИРУЕМ НОВЫЙ КОМПОНЕНТ
 
 export default async function BusinessPage({
   params,
@@ -37,10 +38,10 @@ export default async function BusinessPage({
     >
       <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] z-0"></div>
 
-      <main className="w-full max-w-[480px] min-h-screen z-10 flex flex-col relative pt-16 px-0">
+      <main className="w-full max-w-[480px] min-h-screen z-10 flex flex-col relative pt-16 px-4">
         
-        {/* ПРОФИЛЬ (с отступами px-6) */}
-        <div className="flex flex-col items-center text-center px-6">
+        {/* ПРОФИЛЬ */}
+        <div className="flex flex-col items-center text-center">
             <img 
               src={avatarUrl} 
               alt={business.name} 
@@ -55,42 +56,24 @@ export default async function BusinessPage({
                 Барбершоп, который слышит
             </p>
 
-            <div className="flex items-center gap-10 mb-12">
-                {business.telegram && (
-                    <a href={`https://t.me/${business.telegram}`} target="_blank" className="text-white hover:text-gray-300 transition-transform hover:scale-110">
-                        <Send size={30} strokeWidth={1.5} />
-                    </a>
-                )}
-                {business.phone && (
-                    <a href={`tel:${business.phone}`} className="text-white hover:text-gray-300 transition-transform hover:scale-110">
-                        <Phone size={30} strokeWidth={1.5} />
-                    </a>
-                )}
-                {business.instagram && (
-                    <a href={`https://instagram.com/${business.instagram}`} target="_blank" className="text-white hover:text-gray-300 transition-transform hover:scale-110">
-                        <Instagram size={30} strokeWidth={1.5} />
-                    </a>
-                )}
-            </div>
+            {/* 👇 2. ВОТ ЗДЕСЬ РАНЬШЕ БЫЛИ ИКОНКИ, ТЕПЕРЬ ОДНА СТРОКА 👇 */}
+            <TrackingSocials business={business} />
+            {/* 👆 ОНА САМА НАРИСУЕТ ИКОНКИ И БУДЕТ СЧИТАТЬ КЛИКИ */}
+
         </div>
 
-        {/* ОСНОВНОЙ КОНТЕНТ */}
-        <div className="flex-1 flex flex-col pb-12">
+        {/* ВИДЖЕТЫ */}
+        <div className="flex-1 flex flex-col gap-4 pb-12">
+           <AboutWidget business={business} />
+
+           <BookingWidget 
+             services={business.services || []} 
+             masters={masters || []} 
+             businessName={business.name} 
+           />
            
-           {/* Кнопки (с отступами px-4) */}
-           <div className="px-4 flex flex-col gap-4">
-             <AboutWidget business={business} />
-
-             <BookingWidget 
-               services={business.services || []} 
-               masters={masters || []} 
-               businessName={business.name} 
-             />
-           </div>
-
-           {/* 👇 НОВЫЙ БЛОК АКЦИЙ (без отступов, чтобы скролл уходил за край) */}
+           {/* Акции в самом низу */}
            <PromotionsWidget promotions={business.promotions} />
-           
         </div>
 
         <div className="text-center text-white/20 text-[10px] uppercase tracking-[0.4em] pb-8">
