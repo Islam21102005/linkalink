@@ -13,13 +13,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Получаем данные. Важно: frontend должен прислать именно эти поля
-    const { businessName, service, master, date, time, clientName, clientPhone } = body;
+    // Получаем данные с подстраховкой
+    const { businessName, service, master, date, time } = body;
+    const clientName = body.clientName || body.name || "Не указано";
+    const clientPhone = body.clientPhone || body.phone || "Не указано";
 
-    // 1. Сохраняем в Supabase
+    // 1. Сохраняем в БД
     const { error: dbError } = await supabase.from('bookings').insert([
       { 
-        business_slug: businessName, // Или slug, если передаешь
+        business_slug: businessName, 
         client_name: clientName, 
         client_phone: clientPhone, 
         service_name: service, 
@@ -29,11 +31,9 @@ export async function POST(request: Request) {
       }
     ]);
 
-    if (dbError) {
-      console.error("Ошибка записи в БД:", dbError);
-    }
+    if (dbError) console.error("Ошибка БД:", dbError);
 
-    // 2. Формируем сообщение для Телеграм (HTML разметка)
+    // 2. Отправляем в Telegram
     const message = `
 🔥 <b>НОВАЯ ЗАПИСЬ!</b>
 🏢 <b>${businessName}</b>
@@ -47,14 +47,13 @@ export async function POST(request: Request) {
 ⏰ <b>Время:</b> ${time}
 `;
 
-    // 3. Отправляем в Телеграм
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         chat_id: CHAT_ID, 
         text: message, 
-        parse_mode: 'HTML' // Важно для жирного шрифта
+        parse_mode: 'HTML' 
       }),
     });
 

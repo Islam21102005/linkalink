@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Instagram, Send, Phone } from "lucide-react"; 
 import BookingWidget from "@/components/BookingWidget";
 import AboutWidget from "@/components/AboutWidget";
+import PromotionsWidget from "@/components/PromotionsWidget"; // 👈 Импортируем новый виджет
 
 export default async function BusinessPage({
   params,
@@ -36,9 +37,10 @@ export default async function BusinessPage({
     >
       <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] z-0"></div>
 
-      <main className="w-full max-w-[480px] min-h-screen z-10 flex flex-col relative pt-16 px-4">
+      <main className="w-full max-w-[480px] min-h-screen z-10 flex flex-col relative pt-16 px-0">
         
-        <div className="flex flex-col items-center text-center">
+        {/* ПРОФИЛЬ (с отступами px-6) */}
+        <div className="flex flex-col items-center text-center px-6">
             <img 
               src={avatarUrl} 
               alt={business.name} 
@@ -49,26 +51,21 @@ export default async function BusinessPage({
                 {business.name}
             </h1>
             
-            {/* ФИКСИРОВАННЫЙ ТЕКСТ */}
             <p className="text-white/70 text-[11px] font-medium mb-8 uppercase tracking-[0.3em]">
                 Барбершоп, который слышит
             </p>
 
-            {/* СОЦСЕТИ + ЗВОНОК */}
             <div className="flex items-center gap-10 mb-12">
                 {business.telegram && (
                     <a href={`https://t.me/${business.telegram}`} target="_blank" className="text-white hover:text-gray-300 transition-transform hover:scale-110">
                         <Send size={30} strokeWidth={1.5} />
                     </a>
                 )}
-                
-                {/* ИКОНКА ПОЗВОНИТЬ В ТОМ ЖЕ СТИЛЕ */}
                 {business.phone && (
                     <a href={`tel:${business.phone}`} className="text-white hover:text-gray-300 transition-transform hover:scale-110">
                         <Phone size={30} strokeWidth={1.5} />
                     </a>
                 )}
-
                 {business.instagram && (
                     <a href={`https://instagram.com/${business.instagram}`} target="_blank" className="text-white hover:text-gray-300 transition-transform hover:scale-110">
                         <Instagram size={30} strokeWidth={1.5} />
@@ -77,14 +74,23 @@ export default async function BusinessPage({
             </div>
         </div>
 
-        <div className="flex-1 flex flex-col gap-4 pb-12">
-           <AboutWidget business={business} />
+        {/* ОСНОВНОЙ КОНТЕНТ */}
+        <div className="flex-1 flex flex-col pb-12">
+           
+           {/* Кнопки (с отступами px-4) */}
+           <div className="px-4 flex flex-col gap-4">
+             <AboutWidget business={business} />
 
-           <BookingWidget 
-             services={business.services || []} 
-             masters={masters || []} 
-             businessName={business.name} 
-           />
+             <BookingWidget 
+               services={business.services || []} 
+               masters={masters || []} 
+               businessName={business.name} 
+             />
+           </div>
+
+           {/* 👇 НОВЫЙ БЛОК АКЦИЙ (без отступов, чтобы скролл уходил за край) */}
+           <PromotionsWidget promotions={business.promotions} />
+           
         </div>
 
         <div className="text-center text-white/20 text-[10px] uppercase tracking-[0.4em] pb-8">

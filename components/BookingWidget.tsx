@@ -13,21 +13,21 @@ export default function BookingWidget({ services, masters, businessName }: any) 
   const emptyForm = { service: "", price: "", master: "", date: "", time: "", name: "", phone: "" };
   const [formData, setFormData] = useState(emptyForm);
 
-  // --- ФУНКЦИЯ МАСКИ ТЕЛЕФОНА ---
+  // --- ЛОГИКА МАСКИ ТЕЛЕФОНА (ИСПРАВЛЕНА) ---
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let input = e.target.value.replace(/\D/g, ""); // Убираем всё кроме цифр
+    let input = e.target.value.replace(/\D/g, ""); // Оставляем только цифры
     
-    // Если начали вводить с 8 или 7, убираем первую цифру, чтобы не дублировать код страны
+    // Если начали вводить с 7 или 8, убираем их, чтобы не дублировать +7
     if (input.startsWith("7") || input.startsWith("8")) {
       input = input.slice(1);
     }
     
-    // Ограничиваем длину (10 цифр после +7)
+    // Обрезаем лишнее (макс 10 цифр)
     if (input.length > 10) input = input.slice(0, 10);
 
-    // Формируем красивую строку +7 (XXX) ...
+    // Собираем строку
     let formatted = "";
-    if (input.length >= 0) formatted = "+7";
+    if (input.length > 0) formatted = "+7";
     if (input.length > 0) formatted += " (" + input.slice(0, 3);
     if (input.length >= 4) formatted += ") " + input.slice(3, 6);
     if (input.length >= 7) formatted += "-" + input.slice(6, 8);
@@ -72,15 +72,24 @@ export default function BookingWidget({ services, masters, businessName }: any) 
 
   const handleBook = async () => {
     setLoading(true);
+    
+    // Явно формируем объект для отправки
+    const payload = {
+        businessName,
+        service: `${formData.service} (${formData.price})`,
+        master: formData.master,
+        date: formData.date,
+        time: formData.time,
+        clientName: formData.name,  // ВАЖНО: передаем как clientName
+        clientPhone: formData.phone // ВАЖНО: передаем как clientPhone
+    };
+
     await fetch("/api/telegram", { 
       method: "POST", 
-      body: JSON.stringify({ 
-        ...formData, 
-        businessName,
-        clientName: formData.name, // Явно передаем имя как clientName
-        clientPhone: formData.phone 
-      }) 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload) 
     });
+    
     setLoading(false);
     setStep(4);
   };
@@ -90,7 +99,7 @@ export default function BookingWidget({ services, masters, businessName }: any) 
     setStep(s === 3 && (!formData.service || !formData.master) ? 1 : s);
   };
 
-  // Валидация телефона: +7 (XXX) XXX-XX-XX — это 18 символов
+  // Валидация: длина +7 (XXX) XXX-XX-XX ровно 18 символов
   const isPhoneValid = formData.phone.length === 18;
 
   if (!isOpen) {
@@ -138,19 +147,44 @@ export default function BookingWidget({ services, masters, businessName }: any) 
           </div>
         )}
 
+        {/* ШАГ 2: МАСТЕР (С ИНДИКАТОРОМ СМЕНЫ) */}
         {step === 2 && (
             <div className="flex flex-col h-full">
-                <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter italic">Мастер</h3>
-                <div className="space-y-3 overflow-y-auto no-scrollbar">
+                <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter italic text-center">Выберите мастера</h3>
+                <div className="space-y-3 overflow-y-auto no-scrollbar pr-1">
                     {masters.map((m: any, i: number) => (
-                        <div key={i} onClick={() => { setFormData(p => ({...p, master: m.name})); setStep(formData.service ? 3 : 1); }} className="flex items-center gap-4 p-3 border border-gray-100 rounded-2xl hover:border-black cursor-pointer transition-all">
-                            <img src={m.photo_url || ""} className="w-14 h-14 rounded-full object-cover bg-gray-100" alt="" />
-                            <div>
-                                <div className="font-bold uppercase text-sm tracking-widest">{m.name}</div>
-                                <div className="text-[10px] text-gray-400 uppercase font-bold">{m.specialty}</div>
+                        <div 
+                          key={i} 
+                          onClick={() => { setFormData(p => ({...p, master: m.name})); setStep(formData.service ? 3 : 1); }} 
+                          className="flex items-center gap-4 p-4 border border-gray-100 rounded-[24px] hover:border-black cursor-pointer transition-all relative"
+                        >
+                            {/* Аватарка */}
+                            <div className="relative">
+                                <img src={m.photo_url || ""} className="w-16 h-16 rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm" alt="" />
+                                
+                                {/* ПУЛЬСИРУЮЩИЙ ИНДИКАТОР (если m.on_duty === true) */}
+                                {m.on_duty && (
+                                    <div className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white"></span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold uppercase text-sm tracking-widest">{m.name}</span>
+                                    {/* Небольшой текст рядом с точкой, если на смене */}
+                                    {m.on_duty && <span className="text-[8px] font-black text-green-600 uppercase tracking-tighter bg-green-50 px-1.5 py-0.5 rounded">На смене</span>}
+                                </div>
+                                <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-0.5">{m.specialty}</div>
                             </div>
                         </div>
                     ))}
+                    
+                    <div onClick={() => { setFormData(p => ({...p, master: "Любой мастер"})); setStep(formData.service ? 3 : 1); }} className="p-4 bg-gray-50 rounded-[24px] text-center font-bold text-xs uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition mt-2">
+                      Любой свободный мастер
+                    </div>
                 </div>
             </div>
         )}
@@ -177,6 +211,8 @@ export default function BookingWidget({ services, masters, businessName }: any) 
                 )}
                 {formData.time && (
                     <div className="absolute bottom-8 left-8 right-8 space-y-3 bg-white pt-4">
+                        
+                        {/* ПОЛЕ ИМЯ */}
                         <input 
                           type="text" 
                           placeholder="ИМЯ" 
@@ -184,13 +220,16 @@ export default function BookingWidget({ services, masters, businessName }: any) 
                           value={formData.name}
                           onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
                         />
+                        
+                        {/* ПОЛЕ ТЕЛЕФОН С МАСКОЙ */}
                         <input 
                           type="tel" 
                           placeholder="+7 (___) ___-__-__" 
                           className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" 
-                          value={formData.phone}
-                          onChange={handlePhoneChange} // Используем нашу маску
+                          value={formData.phone} // ВАЖНО: привязка к стейту
+                          onChange={handlePhoneChange} // ВАЖНО: вызов маски
                         />
+
                         <button 
                           onClick={handleBook} 
                           disabled={!formData.name || !isPhoneValid || loading} 
