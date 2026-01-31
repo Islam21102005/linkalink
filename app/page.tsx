@@ -2,421 +2,437 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import localFont from "next/font/local";
 import { 
-  CalendarCheck, 
-  MessageCircle, 
-  Star, 
-  Users, 
-  Menu, 
-  BellRing, 
-  HelpCircle, 
-  Sparkles,
-  Smartphone,
-  CheckCircle2,
-  ChevronDown,
-  UtensilsCrossed,
+  ArrowRight, 
+  Plus, 
+  Minus, 
+  Smartphone, 
+  Globe, 
+  Zap,
+  ShieldCheck,
+  Layout,
+  Menu,
+  X,
   Clock,
-  ArrowRight
+  CheckCircle2,
+  AlertCircle,
+  Send
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
 
-// --- ТИПЫ ДАННЫХ ---
+// --- ШРИФТЫ ---
+const akony = localFont({
+  src: "./fonts/AKONY.otf",
+  display: "swap",
+});
 
-interface FeatureCardProps {
-  // Исправлено: ReactElement гарантирует, что это React-компонент, а не просто текст
-  icon: React.ReactElement; 
+// --- ТИПЫ ДАННЫХ ---
+interface FeatureBoxProps {
+  icon: React.ReactElement<any>; 
   title: string;
   desc: string;
-  color: string;
-}
-
-interface PricingCardProps {
-  title: string;
-  price: string;
-  description: string;
-  features: string[];
-  isPopular?: boolean;
-  buttonText?: string;
-}
-
-interface FaqItemProps {
-  question: string;
-  answer: string;
 }
 
 // --- ОСНОВНОЙ КОМПОНЕНТ ---
 
 export default function Home() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Скролл к секциям
+  const scrollTo = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-200 selection:bg-indigo-500 selection:text-white overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#051F20] text-[#DAF1DE] selection:bg-[#235347] selection:text-white font-sans overflow-x-hidden">
       
-      {/* ФОНОВЫЕ ЭФФЕКТЫ (GLOW) */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px]" />
-      </div>
-
-      {/* --- НАВИГАЦИЯ --- */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0B0F19]/70 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:rotate-12 transition-transform">
-              L
-            </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              Linkalink
-            </span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
-            <a href="#features" className="hover:text-white transition-colors">Возможности</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Тарифы</a>
-            <a href="#faq" className="hover:text-white transition-colors">Вопросы</a>
+      {/* --- НАВИГАЦИЯ (Парящая плашка) --- */}
+      <div className="fixed top-6 left-0 w-full z-50 flex justify-center px-4">
+        <nav className="w-full max-w-5xl bg-[#051F20]/80 backdrop-blur-xl border border-[#163832] rounded-full px-4 py-3 md:px-6 md:py-4 flex items-center justify-between shadow-2xl shadow-black/50 relative">
+          
+          {/* Логотип */}
+          <div className="flex items-center gap-2">
+            <img src="/logo.jpg" alt="Logo" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-[#235347]" />
+            
+          </div>
+          
+          {/* Десктоп меню */}
+          <div className="hidden md:flex items-center gap-8 text-xs lg:text-sm font-medium text-[#8EB69B]">
+            <button onClick={() => scrollTo('pain')} className="hover:text-[#DAF1DE] transition-colors">Проблемы</button>
+            <button onClick={() => scrollTo('solution')} className="hover:text-[#DAF1DE] transition-colors">Решение</button>
+            <button onClick={() => scrollTo('cases')} className="hover:text-[#DAF1DE] transition-colors">Кейсы</button>
+            <button onClick={() => scrollTo('timeline')} className="hover:text-[#DAF1DE] transition-colors">Этапы</button>
           </div>
 
-          <div className="flex gap-4">
-            <Link href="/elegant-barbershop" className="hidden sm:flex items-center gap-2 text-sm font-medium text-white hover:text-indigo-400 transition">
-              <span>Демо</span>
-              <ArrowRight size={14} />
-            </Link>
-            <Link 
-              href="#pricing" 
-              className="px-5 py-2.5 text-sm font-bold bg-white text-slate-950 rounded-full hover:bg-indigo-50 transition shadow-lg shadow-white/10"
+          {/* Кнопка Связаться (Десктоп) */}
+          <div className="hidden md:block">
+            <button 
+              onClick={() => scrollTo('contact')}
+              className="px-6 py-2 bg-[#235347] hover:bg-[#163832] text-white rounded-full text-xs font-bold transition-all shadow-lg shadow-[#0B2B26] border border-[#235347]"
             >
-              Создать
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* --- HERO СЕКЦИЯ --- */}
-      <header className="relative pt-40 pb-20 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-20">
-        
-        {/* Левая часть: Текст */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex-1 text-center md:text-left z-10"
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium mb-8 text-indigo-300 backdrop-blur-sm">
-            <Sparkles size={14} />
-            <span>Платформа №1 для сферы услуг</span>
-          </div>
-          
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight text-white leading-[1.1]">
-            Твой бизнес <br/>
-            в <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">одной ссылке</span>
-          </h1>
-          
-          <p className="text-lg text-slate-400 mb-10 max-w-xl mx-auto md:mx-0 leading-relaxed">
-            Замени громоздкий сайт на стильную визитку. Онлайн-запись, меню, отзывы и Telegram-бот уже внутри. Запуск за 15 минут.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-            <Link href="/elegant-barbershop" className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-200"></div>
-              <button className="relative w-full sm:w-auto px-8 py-4 bg-[#0B0F19] hover:bg-slate-900 text-white rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
-                <Smartphone size={20} className="text-indigo-400" />
-                Смотреть демо
-              </button>
-            </Link>
-            <button className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-lg transition border border-white/10 backdrop-blur-sm">
-              Выбрать тариф
+              Связаться
             </button>
           </div>
-        </motion.div>
 
-        {/* Правая часть: Визуализация телефона */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex-1 w-full max-w-sm relative md:top-10"
-        >
-           {/* Mockup телефона */}
-           <div className="relative mx-auto border-gray-800 dark:border-gray-800 bg-gray-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl">
-                <div className="h-[32px] w-[3px] bg-gray-800 absolute -left-[17px] top-[72px] rounded-l-lg"></div>
-                <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[124px] rounded-l-lg"></div>
-                <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
-                <div className="h-[64px] w-[3px] bg-gray-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
-                <div className="rounded-[2rem] overflow-hidden w-full h-full bg-[#111] relative">
-                    {/* Эмуляция экрана */}
-                    <div className="absolute top-0 w-full h-full bg-slate-900 flex flex-col items-center pt-10 px-4 gap-4">
-                        <div className="w-20 h-20 rounded-full bg-indigo-500 mb-2 mt-4 animate-pulse"></div>
-                        <div className="w-3/4 h-4 bg-slate-700 rounded-full"></div>
-                        <div className="w-1/2 h-3 bg-slate-800 rounded-full mb-4"></div>
-                        
-                        <div className="w-full h-12 bg-slate-800 rounded-xl mb-1 flex items-center px-4 gap-2">
-                           <CalendarCheck size={16} className="text-slate-500" />
-                           <div className="w-20 h-2 bg-slate-600 rounded-full"></div>
-                        </div>
-                         <div className="w-full h-12 bg-slate-800 rounded-xl mb-1 flex items-center px-4 gap-2">
-                           <Clock size={16} className="text-slate-500" />
-                           <div className="w-24 h-2 bg-slate-600 rounded-full"></div>
-                        </div>
-                        
-                        <div className="w-full mt-auto mb-6 p-3 bg-indigo-600 rounded-xl text-center text-xs font-bold text-white">
-                          Записаться онлайн
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
-      </header>
+          {/* Мобильная кнопка меню */}
+          <button className="md:hidden text-[#DAF1DE] p-2" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
 
-      {/* --- ВОЗМОЖНОСТИ --- */}
-      <section id="features" className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Всё для управления <br/> услугами и записью</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Мы объединили инструменты бронирования, маркетинга и аналитики в одном красивом интерфейсе.
-            </p>
-          </div>
+          {/* Мобильное выпадающее меню */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="absolute top-full left-0 mt-4 w-full bg-[#0B2B26] border border-[#163832] rounded-3xl overflow-hidden shadow-2xl p-2 flex flex-col gap-1"
+              >
+                <MobileMenuItem onClick={() => scrollTo('pain')} text="Проблемы" />
+                <MobileMenuItem onClick={() => scrollTo('solution')} text="Решение" />
+                <MobileMenuItem onClick={() => scrollTo('cases')} text="Кейсы" />
+                <MobileMenuItem onClick={() => scrollTo('timeline')} text="Этапы работы" />
+                <MobileMenuItem onClick={() => scrollTo('faq')} text="FAQ" />
+                <button 
+                   onClick={() => scrollTo('contact')}
+                   className="mt-2 w-full py-3 bg-[#DAF1DE] text-[#051F20] font-bold rounded-2xl"
+                >
+                  Связаться с нами
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard 
-              icon={<CalendarCheck />}
-              title="Онлайн запись и Бронь"
-              desc="Клиенты записываются на услуги или бронируют столы 24/7. Автоматическое подтверждение и синхронизация."
-              color="text-emerald-400"
-            />
-            <FeatureCard 
-              icon={<BellRing />}
-              title="Telegram Бот"
-              desc="Мгновенные оповещения о новых записях прямо в ваш мессенджер. Управление расписанием через чат."
-              color="text-blue-400"
-            />
-            <FeatureCard 
-              icon={<Star />}
-              title="Агрегатор отзывов"
-              desc="Собираем отзывы с карт и агрегаторов в одном месте. Повышайте доверие новых клиентов."
-              color="text-yellow-400"
-            />
-            <FeatureCard 
-              icon={<Users />}
-              title="Мастера и Смены"
-              desc="Просмотр того, кто сейчас на смене. Удобный график работы для каждого сотрудника."
-              color="text-purple-400"
-            />
-            <FeatureCard 
-              icon={<UtensilsCrossed />}
-              title="Меню и Услуги"
-              desc="Красивое цифровое меню с фото и ценами. Разделение по категориям для удобства клиентов."
-              color="text-orange-400"
-            />
-            <FeatureCard 
-              icon={<MessageCircle />}
-              title="Карусель акций"
-              desc="Яркие баннеры со спецпредложениями, которые невозможно пропустить. Увеличивайте средний чек."
-              color="text-pink-400"
-            />
-            <FeatureCard 
-              icon={<HelpCircle />}
-              title="FAQ и Поддержка"
-              desc="Блок вопросов и ответов снимает 80% нагрузки с администратора. Все ответы под рукой."
-              color="text-teal-400"
-            />
-            <FeatureCard 
-              icon={<Clock />}
-              title="Уведомления клиентам"
-              desc="Бот напомнит клиенту о визите заранее, снижая количество неявок и опозданий."
-              color="text-cyan-400"
-            />
-             <FeatureCard 
-              icon={<CheckCircle2 />}
-              title="Единая ссылка"
-              desc="Разместите одну ссылку в Instagram, TikTok и 2GIS. Клиент сразу видит всё важное."
-              color="text-white"
-            />
-          </div>
+      {/* --- HERO BLOCK --- */}
+      <section className="relative min-h-screen flex items-center pt-32 pb-20 overflow-hidden">
+        
+        {/* Фон */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#051F20]/80 via-[#051F20]/60 to-[#051F20] z-10" />
+            <img src="/hero-bg.jpg" alt="Background" className="w-full h-full object-cover" />
         </div>
-      </section>
 
-      {/* --- ТАРИФЫ --- */}
-      <section id="pricing" className="py-24 px-6 bg-[#0E121E]">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-bold text-center text-white mb-6">Простые тарифы</h2>
-          <p className="text-slate-400 text-center mb-16 text-lg">Начните бесплатно, платите по мере роста</p>
+        <div className="relative z-20 w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-            <PricingCard 
-              title="Старт" 
-              price="0 ₽"
-              description="Для частных мастеров и старта"
-              features={["Базовая веб-визитка", "Ссылки на соцсети и мессенджеры", "До 5 услуг/товаров в меню", "Стандартный дизайн"]}
-              buttonText="Попробовать"
-            />
-            <PricingCard 
-              title="Бизнес" 
-              price="990 ₽"
-              description="Идеально для салонов и кафе"
-              isPopular={true}
-              features={[
-                "Всё из тарифа Старт",
-                "Онлайн-запись и бронь столов",
-                "Telegram уведомления админу",
-                "Напоминания клиентам",
-                "Агрегация отзывов",
-                "Карусель акций и промо"
-              ]}
-              buttonText="Подключить Бизнес"
-            />
-            <PricingCard 
-              title="Максимум" 
-              price="2490 ₽"
-              description="Для сетей и брендов"
-              features={[
-                "Всё из тарифа Бизнес",
-                "Подключение своего домена",
-                "Управление сменами сотрудников",
-                "Индивидуальная кастомизация",
-                "Приоритетная поддержка 24/7",
-                "Без лейбла сервиса"
-              ]}
-              buttonText="Связаться с нами"
-            />
+          {/* Левая часть: Текст */}
+          <div className="lg:col-span-8 text-center lg:text-left">
+            <span className={`text-lg font-bold tracking-tight hidden sm:block ${akony.className}`}>LINKALINK</span>
+            <motion.h1 
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8 }}
+              className={`${akony.className} text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[#DAF1DE] mb-6 leading-[1.1]`}
+            > Одна ссылка,<br />
+              <span className="text-[#8EB69B]">которая может всё</span>
+            </motion.h1>
           </div>
+
+          {/* Правая часть: Блок с примерами (Десктоп: Справа, Мобил: Снизу) */}
+          <div className="lg:col-span-4 flex justify-center lg:justify-end">
+            <motion.div 
+               initial={{ x: 50, opacity: 0 }}
+               animate={{ x: 0, opacity: 1 }}
+               transition={{ delay: 0.6 }}
+               className="relative group cursor-pointer"
+               onClick={() => scrollTo('cases')}
+            >
+              {/* Карточка-тизер */}
+              <div className="w-64 sm:w-72 bg-[#0B2B26]/90 backdrop-blur-xl border border-[#163832] p-6 rounded-[2rem] hover:scale-105 transition-transform duration-300">
+                 <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-full bg-[#235347] flex items-center justify-center">
+                       <Layout size={20} className="text-[#DAF1DE]" />
+                    </div>
+                    <ArrowRight className="text-[#8EB69B]" />
+                 </div>
+                 <p className="text-[#8EB69B] text-sm leading-relaxed mb-4">
+                    наши решенные задачи
+                 </p>
+                 <div className="w-full h-32 rounded-2xl bg-[url('https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=2074&auto=format&fit=crop')] bg-cover bg-center opacity-80" />
+              </div>
+            </motion.div>
+          </div>
+
         </div>
       </section>
 
-      {/* --- FAQ SECTION (Интерактивная) --- */}
-      <section id="faq" className="py-24 px-6 max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold text-center text-white mb-12">Частые вопросы</h2>
-        <div className="space-y-4">
-          <FaqItem 
-            question="Нужно ли мне знать программирование?" 
-            answer="Нет, абсолютно не нужно. Вы заполняете простую анкету, загружаете фото, и ваш сайт генерируется автоматически." 
-          />
-          <FaqItem 
-            question="Как работают уведомления в Telegram?" 
-            answer="Вы подключаете нашего бота за 1 клик. Когда клиент оставляет заявку на сайте, бот мгновенно присылает вам сообщение с деталями записи." 
-          />
-          <FaqItem 
-            question="Можно ли использовать свой домен?" 
-            answer="Да, на тарифе «Максимум» мы можем подключить ваш собственный красивый домен (например, barbershop.ru) вместо нашей ссылки." 
-          />
-          <FaqItem 
-            question="Можно ли изменить дизайн?" 
-            answer="Да, вы можете менять цветовую тему, загружать свои логотипы и фотографии фона, чтобы сайт соответствовал вашему бренду." 
-          />
-        </div>
+      {/* --- БОЛЬ КЛИЕНТОВ (NEW) --- */}
+      <section id="pain" className="py-24 bg-[#051F20] rounded-t-[3rem] -mt-10 relative z-30 border-t border-[#163832]">
+         <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-16">
+               <h2 className="text-[#8EB69B] text-sm font-bold uppercase tracking-widest mb-2">Актуально для вас?</h2>
+               <h3 className="text-3xl md:text-5xl font-bold text-[#DAF1DE]">Знакомые проблемы</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <PainCard 
+                  title="Хаос в записях" 
+                  desc="Блокнот, WhatsApp, Direct — записи теряются, клиенты забывают прийти, вы теряете деньги."
+               />
+               <PainCard 
+                  title="Сложно записаться" 
+                  desc="Клиент хочет записаться ночью, но вы спите. Пока вы ответите утром, он уже уйдет к конкуренту."
+               />
+               <PainCard 
+                  title="Нет времени на сайт" 
+                  desc="Разработка сайта — это долго, дорого и сложно. Вам нужно работать, а не писать ТЗ программистам."
+               />
+            </div>
+         </div>
+      </section>
+
+      {/* --- РЕШЕНИЕ (УТП) --- */}
+      <section id="solution" className="py-24 bg-[#0B2B26] rounded-[3rem] mx-2 md:mx-6 border border-[#163832]">
+         <div className="max-w-6xl mx-auto px-6">
+            <div className="flex flex-col md:flex-row gap-12 items-center">
+               <div className="flex-1">
+                  <h2 className="text-[#8EB69B] text-sm font-bold uppercase tracking-widest mb-2">Наше решение</h2>
+                  <h3 className="text-3xl md:text-5xl font-bold text-[#DAF1DE] mb-6 leading-tight">
+                     Всё управление <br/> в одном окне
+                  </h3>
+                  <p className="text-[#8EB69B] text-lg leading-relaxed mb-8">
+                     Linkalink заменяет администратора, сайт и CRM. Это не просто красивая визитка — это мощный инструмент, который работает 24/7.
+                  </p>
+                  
+                  <ul className="space-y-4">
+                     <SolutionItem text="Клиенты записываются сами за 30 секунд" />
+                     <SolutionItem text="Напоминания приходят автоматически" />
+                     <SolutionItem text="База клиентов формируется сама" />
+                     <SolutionItem text="Красивое меню услуг с ценами и фото" />
+                  </ul>
+               </div>
+
+               <div className="flex-1 w-full flex justify-center">
+                  <div className="relative w-full max-w-sm">
+                     <div className="absolute top-0 -left-4 w-72 h-72 bg-[#235347]/30 rounded-full blur-3xl" />
+                     <div className="relative bg-[#051F20] border border-[#163832] rounded-[2.5rem] p-6 shadow-2xl">
+                        {/* Имитация интерфейса */}
+                        <div className="flex items-center gap-4 mb-6">
+                           <div className="w-12 h-12 rounded-full bg-[#DAF1DE]" />
+                           <div>
+                              <div className="h-3 w-32 bg-[#235347] rounded-full mb-2" />
+                              <div className="h-2 w-20 bg-[#163832] rounded-full" />
+                           </div>
+                        </div>
+                        <div className="space-y-3">
+                           <div className="h-16 w-full bg-[#0B2B26] rounded-xl border border-[#163832] flex items-center px-4">
+                              <div className="h-2 w-full bg-[#163832] rounded-full opacity-50" />
+                           </div>
+                           <div className="h-16 w-full bg-[#0B2B26] rounded-xl border border-[#163832] flex items-center px-4">
+                              <div className="h-2 w-full bg-[#163832] rounded-full opacity-50" />
+                           </div>
+                           <div className="h-16 w-full bg-[#DAF1DE] rounded-xl flex items-center justify-center font-bold text-[#051F20]">
+                              Записаться онлайн
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </section>
+
+      {/* --- КЕЙСЫ --- */}
+      <section id="cases" className="py-24 px-6 max-w-6xl mx-auto">
+         <div className="text-center mb-12">
+            <h2 className="text-[#8EB69B] text-sm font-bold uppercase tracking-widest mb-2">Портфолио</h2>
+            <h3 className="text-3xl md:text-5xl font-bold text-[#DAF1DE]">Примеры внедрения</h3>
+         </div>
+
+         <div className="grid grid-cols-1 gap-8">
+            <Link href="/elegant-barbershop">
+               <div className="group relative w-full h-[400px] md:h-[500px] rounded-[2.5rem] overflow-hidden border border-[#163832] cursor-pointer">
+                  <div className="absolute inset-0 bg-[#163832] group-hover:scale-105 transition-transform duration-700">
+                     <div className="w-full h-full opacity-60 bg-[url('https://images.unsplash.com/photo-1503951914875-452162b7f30a?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#051F20] via-[#051F20]/50 to-transparent opacity-90" />
+                  
+                  <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                     <div>
+                        <div className="inline-block px-4 py-1 bg-[#DAF1DE] rounded-full text-[#051F20] text-xs font-bold mb-4">
+                           Barbershop
+                        </div>
+                        <h4 className="text-3xl md:text-4xl font-bold text-[#DAF1DE] mb-2">Elegant Cut</h4>
+                        <p className="text-[#8EB69B] max-w-md">Полная автоматизация: от выбора мастера до подтверждения записи в Telegram.</p>
+                     </div>
+                     <div className="px-6 py-3 bg-[#235347] rounded-full text-white font-bold text-sm flex items-center gap-2 group-hover:bg-[#DAF1DE] group-hover:text-[#051F20] transition-colors">
+                        Смотреть сайт <ArrowRight size={16} />
+                     </div>
+                  </div>
+               </div>
+            </Link>
+         </div>
+      </section>
+
+      {/* --- ЭТАПЫ РАБОТЫ (Timeline) --- */}
+      <section id="timeline" className="py-24 bg-[#0B2B26] border-y border-[#163832]">
+         <div className="max-w-4xl mx-auto px-6">
+            <h2 className="text-3xl md:text-5xl font-bold text-[#DAF1DE] mb-16 text-center">Как мы работаем</h2>
+            
+            <div className="relative">
+               {/* Вертикальная линия */}
+               <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-[#163832] -translate-x-1/2" />
+
+               <TimelineItem 
+                  step="01"
+                  title="Заявка"
+                  desc="Вы оставляете заявку на сайте. Мы связываемся, чтобы обсудить детали вашего бизнеса."
+                  align="left"
+               />
+               <TimelineItem 
+                  step="02"
+                  title="Настройка"
+                  desc="Мы загружаем ваши услуги, мастеров, фото и настраиваем график работы."
+                  align="right"
+               />
+               <TimelineItem 
+                  step="03"
+                  title="Запуск"
+                  desc="Вы получаете готовую ссылку. Размещаете её в Instagram и картах. Клиенты начинают записываться."
+                  align="left"
+               />
+               <TimelineItem 
+                  step="04"
+                  title="Поддержка"
+                  desc="Мы остаемся на связи, помогаем с изменениями и следим за стабильной работой."
+                  align="right"
+               />
+            </div>
+         </div>
+      </section>
+
+      {/* --- FAQ --- */}
+      <section id="faq" className="py-24 max-w-3xl mx-auto px-6">
+         <h2 className="text-3xl font-bold text-[#DAF1DE] mb-12 text-center">Вопросы и ответы</h2>
+         <div className="space-y-4">
+            <FaqItem q="Нужно ли платить за создание?" a="Нет, базовая настройка бесплатна. Вы платите только абонентскую плату за тариф." />
+            <FaqItem q="Смогу ли я сам менять цены?" a="Да, у вас будет удобная панель администратора, где можно менять цены, графики и услуги в 2 клика." />
+            <FaqItem q="Есть ли бесплатный период?" a="Да, тариф 'Старт' полностью бесплатный навсегда. Вы можете протестировать сервис без рисков." />
+         </div>
+      </section>
+
+      {/* --- ФОРМА ЗАЯВКИ --- */}
+      <section id="contact" className="py-24 bg-[#051F20] px-6">
+         <div className="max-w-2xl mx-auto bg-[#0B2B26] rounded-[3rem] p-8 md:p-12 border border-[#163832] text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-[#DAF1DE] mb-4">Начните сейчас</h2>
+            <p className="text-[#8EB69B] mb-8">Оставьте контакты, и мы пришлем вам пример вашей будущей страницы через 15 минут.</p>
+            
+            <form className="space-y-4">
+               <input 
+                  type="text" 
+                  placeholder="Ваше имя" 
+                  className="w-full h-14 px-6 rounded-2xl bg-[#051F20] border border-[#163832] text-[#DAF1DE] placeholder:text-[#235347] focus:outline-none focus:border-[#DAF1DE] transition-colors"
+               />
+               <input 
+                  type="tel" 
+                  placeholder="Номер телефона / Telegram" 
+                  className="w-full h-14 px-6 rounded-2xl bg-[#051F20] border border-[#163832] text-[#DAF1DE] placeholder:text-[#235347] focus:outline-none focus:border-[#DAF1DE] transition-colors"
+               />
+               <button className="w-full h-14 bg-[#DAF1DE] rounded-2xl text-[#051F20] font-bold text-lg hover:bg-white transition-colors flex items-center justify-center gap-2">
+                  Отправить заявку <Send size={20} />
+               </button>
+            </form>
+            <p className="text-[#235347] text-xs mt-6">Нажимая кнопку, вы соглашаетесь с политикой конфиденциальности</p>
+         </div>
       </section>
 
       {/* --- FOOTER --- */}
-      <footer className="py-12 border-t border-white/5 bg-[#05070B] text-center">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
-          <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500 mb-4">Linkalink</div>
-          <p className="text-slate-500 mb-8 max-w-sm">
-            Современный конструктор сайтов для сферы услуг. <br/>Сделано с любовью к бизнесу.
-          </p>
-          <div className="flex gap-6 mb-8 text-slate-400">
-            <a href="#" className="hover:text-white transition">Telegram Бот</a>
-            <a href="#" className="hover:text-white transition">Поддержка</a>
-            <a href="#" className="hover:text-white transition">Оферта</a>
-          </div>
-          <p className="text-slate-600 text-sm">&copy; 2024 Linkalink. Все права защищены.</p>
-        </div>
+      <footer className="py-12 bg-[#051F20] border-t border-[#163832] text-center">
+        <div className={`text-2xl font-bold text-[#DAF1DE] mb-4 ${akony.className}`}>LINKALINK</div>
+        <p className="text-[#8EB69B] text-sm">© 2024 Все права защищены</p>
       </footer>
     </div>
   );
 }
 
-// --- ВНУТРЕННИЕ КОМПОНЕНТЫ ---
+// --- КОМПОНЕНТЫ ---
 
-function FeatureCard({ icon, title, desc, color }: FeatureCardProps) {
+function MobileMenuItem({ onClick, text }: { onClick: () => void, text: string }) {
   return (
-    <motion.div 
-      whileHover={{ y: -5 }}
-      className="p-8 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/[0.07] hover:border-white/10 transition-all duration-300 group"
+    <button 
+      onClick={onClick} 
+      className="w-full py-3 px-4 text-left text-[#8EB69B] hover:bg-[#163832] hover:text-[#DAF1DE] rounded-xl transition-colors font-medium"
     >
-      <div className={`mb-6 p-4 rounded-2xl bg-slate-900/50 w-fit ${color} group-hover:scale-110 transition-transform duration-300 ring-1 ring-white/5`}>
-        {/* Исправлено: Добавлено явное указание типа <any>, чтобы TS разрешил параметр size */}
-        {React.cloneElement(icon as React.ReactElement<any>, { size: 28 })}
-      </div>
-      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-    </motion.div>
+      {text}
+    </button>
   )
 }
 
-function PricingCard({ title, price, description, features, isPopular = false, buttonText = "Выбрать" }: PricingCardProps) {
-  return (
-    <motion.div 
-      whileHover={{ y: isPopular ? -10 : -5 }}
-      className={`relative p-8 rounded-3xl border flex flex-col h-full ${
-        isPopular 
-          ? 'bg-gradient-to-b from-slate-900 to-slate-900/50 border-indigo-500/50 shadow-2xl shadow-indigo-500/10 z-10' 
-          : 'bg-white/5 border-white/5'
-      }`}
-    >
-      {isPopular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg shadow-indigo-500/40">
-          ХИТ ПРОДАЖ
-        </div>
-      )}
-      <div className="mb-6">
-        <h3 className={`text-lg font-bold mb-2 ${isPopular ? 'text-indigo-400' : 'text-slate-200'}`}>{title}</h3>
-        <p className="text-slate-500 text-xs mb-4 h-8">{description}</p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-bold text-white">{price}</span>
-          <span className="text-slate-500">/мес</span>
-        </div>
+function PainCard({ title, desc }: { title: string, desc: string }) {
+   return (
+      <div className="bg-[#0B2B26] p-8 rounded-[2rem] border border-[#163832] hover:border-[#F43F5E]/50 transition-colors group">
+         <div className="w-12 h-12 bg-[#051F20] rounded-full flex items-center justify-center mb-6 group-hover:bg-[#F43F5E]/20 transition-colors">
+            <AlertCircle className="text-[#8EB69B] group-hover:text-[#F43F5E]" />
+         </div>
+         <h4 className="text-xl font-bold text-[#DAF1DE] mb-3">{title}</h4>
+         <p className="text-[#8EB69B] text-sm leading-relaxed">{desc}</p>
       </div>
-      
-      <div className="w-full h-px bg-white/5 mb-6"></div>
-
-      <ul className="space-y-4 mb-8 flex-1">
-        {features.map((item, i) => (
-          <li key={i} className="flex items-start gap-3 text-slate-300 text-sm">
-            <CheckCircle2 size={18} className={`shrink-0 ${isPopular ? 'text-indigo-400' : 'text-slate-500'}`} />
-            <span className="leading-tight">{item}</span>
-          </li>
-        ))}
-      </ul>
-      
-      <button className={`w-full py-4 rounded-xl font-bold transition-all duration-300 ${
-        isPopular 
-          ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' 
-          : 'bg-white/10 hover:bg-white/20 text-white'
-      }`}>
-        {buttonText}
-      </button>
-    </motion.div>
-  )
+   )
 }
 
-function FaqItem({ question, answer }: FaqItemProps) {
-  const [isOpen, setIsOpen] = useState(false);
+function SolutionItem({ text }: { text: string }) {
+   return (
+      <li className="flex items-center gap-3">
+         <div className="w-6 h-6 rounded-full bg-[#235347] flex items-center justify-center shrink-0">
+            <CheckCircle2 size={14} className="text-[#DAF1DE]" />
+         </div>
+         <span className="text-[#DAF1DE] font-medium">{text}</span>
+      </li>
+   )
+}
 
-  return (
-    <div className="border border-white/5 rounded-2xl bg-white/[0.02] overflow-hidden">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-6 text-left flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-      >
-        <span className="font-bold text-slate-200">{question}</span>
-        <ChevronDown 
-          className={`text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
-          size={20} 
-        />
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-6 pt-0 text-slate-400 text-sm leading-relaxed border-t border-white/5">
-              {answer}
+function TimelineItem({ step, title, desc, align }: { step: string, title: string, desc: string, align: 'left' | 'right' }) {
+   return (
+      <div className={`relative flex items-center justify-between mb-12 md:mb-24 ${align === 'right' ? 'md:flex-row-reverse' : ''}`}>
+         {/* Контент */}
+         <div className="w-full md:w-[45%] pl-12 md:pl-0">
+            <div className={`flex flex-col gap-2 ${align === 'right' ? 'md:items-start md:text-left' : 'md:items-end md:text-right'}`}>
+               <div className="text-4xl font-bold text-[#235347] opacity-50">{step}</div>
+               <h4 className="text-2xl font-bold text-[#DAF1DE]">{title}</h4>
+               <p className="text-[#8EB69B] text-sm md:text-base">{desc}</p>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
+         </div>
+         
+         {/* Точка на линии */}
+         <div className="absolute left-4 md:left-1/2 w-4 h-4 bg-[#DAF1DE] rounded-full border-4 border-[#0B2B26] -translate-x-1/2 z-10" />
+         
+         {/* Пустое место для баланса сетки */}
+         <div className="hidden md:block w-[45%]" />
+      </div>
+   )
+}
+
+function FaqItem({ q, a }: { q: string, a: string }) {
+   const [isOpen, setIsOpen] = useState(false);
+   return (
+      <div className="bg-[#0B2B26] rounded-2xl border border-[#163832] overflow-hidden">
+         <button 
+            onClick={() => setIsOpen(!isOpen)} 
+            className="w-full p-6 flex items-center justify-between text-left hover:bg-[#163832] transition-colors"
+         >
+            <span className="font-bold text-[#DAF1DE]">{q}</span>
+            {isOpen ? <Minus size={20} className="text-[#8EB69B]"/> : <Plus size={20} className="text-[#235347]"/>}
+         </button>
+         <AnimatePresence>
+            {isOpen && (
+               <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+               >
+                  <div className="p-6 pt-0 text-[#8EB69B] text-sm leading-relaxed border-t border-[#163832]/50 mt-2">
+                     {a}
+                  </div>
+               </motion.div>
+            )}
+         </AnimatePresence>
+      </div>
+   )
 }
