@@ -1,10 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-// Иконки здесь больше не нужны, они внутри TrackingSocials
+import { Instagram, Send, Phone } from "lucide-react"; 
 import BookingWidget from "@/components/BookingWidget";
+import GlampingWidget from "@/components/GlampingWidget"; // Импорт нового виджета
 import AboutWidget from "@/components/AboutWidget";
 import PromotionsWidget from "@/components/PromotionsWidget";
-import TrackingSocials from "@/components/TrackingSocials"; // 👈 1. ИМПОРТИРУЕМ НОВЫЙ КОМПОНЕНТ
+import TrackingSocials from "@/components/TrackingSocials";
 
 export default async function BusinessPage({
   params,
@@ -13,23 +14,23 @@ export default async function BusinessPage({
 }) {
   const { slug } = await params;
 
+  // 1. Получаем бизнес
   const { data: business, error } = await supabase
     .from("businesses")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  if (error || !business) {
-    notFound();
-  }
+  if (error || !business) notFound();
 
+  // 2. Получаем мастеров (только для салонов)
   const { data: masters } = await supabase
     .from("masters")
     .select("*")
     .eq("business_id", business.id);
 
   const bgImage = business.bg_image || "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1000";
-  const avatarUrl = business.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}&background=000&color=fff`;
+  const avatarUrl = business.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}`;
 
   return (
     <div 
@@ -53,26 +54,33 @@ export default async function BusinessPage({
             </h1>
             
             <p className="text-white/70 text-[11px] font-medium mb-8 uppercase tracking-[0.3em]">
-                Барбершоп, который слышит
+                {business.description ? business.description.slice(0, 50) + "..." : "Добро пожаловать"}
             </p>
 
-            {/* 👇 2. ВОТ ЗДЕСЬ РАНЬШЕ БЫЛИ ИКОНКИ, ТЕПЕРЬ ОДНА СТРОКА 👇 */}
             <TrackingSocials business={business} />
-            {/* 👆 ОНА САМА НАРИСУЕТ ИКОНКИ И БУДЕТ СЧИТАТЬ КЛИКИ */}
-
         </div>
 
-        {/* ВИДЖЕТЫ */}
+        {/* ОСНОВНОЙ КОНТЕНТ */}
         <div className="flex-1 flex flex-col gap-4 pb-12">
+           
            <AboutWidget business={business} />
 
-           <BookingWidget 
-             services={business.services || []} 
-             masters={masters || []} 
-             businessName={business.name} 
-           />
-           
-           {/* Акции в самом низу */}
+           {/* 👇 ЛОГИКА ВЫБОРА ВИДЖЕТА 👇 */}
+           {business.business_type === 'glamping' ? (
+             <GlampingWidget 
+                houses={business.services || []} // Дома храним в services
+                addons={business.addons || []}   // Допы в addons
+                businessName={business.name}
+                managerTelegram={business.telegram}
+             />
+           ) : (
+             <BookingWidget 
+               services={business.services || []} 
+               masters={masters || []} 
+               businessName={business.name} 
+             />
+           )}
+
            <PromotionsWidget promotions={business.promotions} />
         </div>
 

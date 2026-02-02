@@ -28,18 +28,24 @@ export default function AboutWidget({ business }: { business: any }) {
           <X size={24} />
         </button>
 
-        {/* ГАЛЕРЕЯ */}
-        <div className="relative h-64 w-full bg-slate-100 shrink-0">
-          <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
-            {(business.gallery || [business.bg_image]).map((img: string, i: number) => (
-              <div key={i} className="min-w-full h-full snap-center">
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-             <div className="bg-white/50 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest text-black">Листайте фото</div>
-          </div>
+        {/* Фото ИЛИ Видео */}
+        <div className="h-64 w-full relative shrink-0 bg-black">
+          {business.video_url ? (
+             <iframe 
+               src={business.video_url} 
+               className="w-full h-full" 
+               allow="autoplay; encrypted-media" 
+               allowFullScreen
+             ></iframe>
+          ) : (
+             <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
+                {(business.gallery || [business.bg_image]).map((img: string, i: number) => (
+                  <div key={i} className="min-w-full h-full snap-center">
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+             </div>
+          )}
         </div>
 
         {/* КОНТЕНТ */}

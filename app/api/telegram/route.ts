@@ -13,75 +13,78 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
+    // ИСПРАВЛЕНО: request.json() вместо req.json()
     const body = await request.json();
-    console.log("🔥 Попытка записи:", body); // Увидим в логах Vercel
-
-    // Проверка настроек
-    if (!TELEGRAM_TOKEN || !CHAT_ID) {
-      console.error("❌ ОШИБКА: Нет токена или ID чата в настройках Vercel");
-      return NextResponse.json({ error: 'Config error' }, { status: 500 });
-    }
-
-    // Получаем данные (с поддержкой разных форматов)
+    
+    // Данные от клиента
     const { businessName, service, master, date, time } = body;
     const clientName = body.clientName || body.name || "Не указано";
     const clientPhone = body.clientPhone || body.phone || "Не указано";
 
-    // 1. Сохраняем в Supabase
-    const { error: dbError } = await supabase.from('bookings').insert([
-      { 
-        business_slug: businessName, 
-        client_name: clientName, 
-        client_phone: clientPhone, 
-        service_name: service, 
-        master_name: master, 
-        booking_date: date,
-        time: time
-      }
-    ]);
+    // 1. Сохраняем в Supabase и СРАЗУ ПОЛУЧАЕМ ID (select)
+    const { data: insertedData, error: dbError } = await supabase
+      .from('bookings')
+      .insert([
+        { 
+          business_slug: businessName, 
+          client_name: clientName, 
+          client_phone: clientPhone, 
+          service_name: service, 
+          master_name: master, 
+          booking_date: date,
+          time: time,
+          status: 'pending' // Статус по умолчанию
+        }
+      ])
+      .select() // Важно: возвращает созданную строку
+      .single();
 
     if (dbError) {
-      console.error("❌ Ошибка Supabase:", dbError);
-    } else {
-      console.log("✅ Запись сохранена в БД");
+      console.error("❌ Ошибка БД:", dbError);
+      return NextResponse.json({ error: 'DB Error' }, { status: 500 });
     }
 
-    // 2. Отправляем в Telegram
+    const bookingId = insertedData.id;
+
+    // 2. Формируем сообщение
     const message = `
-🔥 <b>НОВАЯ ЗАПИСЬ!</b>
+🔥 <b>НОВАЯ ЗАЯВКА #${bookingId}</b>
 🏢 <b>${businessName}</b>
 
-👤 <b>Клиент:</b> ${clientName}
-📞 <b>Телефон:</b> ${clientPhone}
+👤 <b>Гость:</b> ${clientName}
+📞 <b>Связь:</b> ${clientPhone}
 
-✂️ <b>Услуга:</b> ${service}
-💈 <b>Мастер:</b> ${master}
-📅 <b>Дата:</b> ${date}
-⏰ <b>Время:</b> ${time}
+🏠 <b>Объект:</b> ${service}
+📅 <b>Даты:</b> ${date}
+💰 <b>Инфо:</b> ${time}
 `;
 
-    const tgResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    // 3. Добавляем кнопки (Inline Keyboard)
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '✅ Подтвердить', callback_data: `confirm_${bookingId}` },
+          { text: '❌ Отменить', callback_data: `cancel_${bookingId}` }
+        ]
+      ]
+    };
+
+    // 4. Отправляем в Телеграм
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         chat_id: CHAT_ID, 
         text: message, 
-        parse_mode: 'HTML' 
+        parse_mode: 'HTML',
+        reply_markup: keyboard // Прикрепляем кнопки
       }),
     });
-
-    const tgResult = await tgResponse.json();
-    
-    if (!tgResult.ok) {
-      console.error("❌ Ошибка Telegram:", tgResult);
-    } else {
-      console.log("✅ Уведомление отправлено");
-    }
 
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error("❌ Критическая ошибка API:", error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("❌ API Error:", error);
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

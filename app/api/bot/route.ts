@@ -11,44 +11,167 @@ const supabase = createClient(
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.TELEGRAM_CHAT_ID;
 
-export async function GET() { return NextResponse.json({ status: "Bot is active" }); }
+// GET для проверки работоспособности в браузере
+export async function GET() { 
+  return NextResponse.json({ status: "Bot is active (Full Version)" }); 
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    
+    // Получаем данные из обновления Telegram
     const chatId = body.message?.chat.id || body.callback_query?.from.id;
     const text = body.message?.text;
     const data = body.callback_query?.data;
+    const queryId = body.callback_query?.id; // ID для ответа на нажатие кнопки
 
-    if (!chatId || String(chatId) !== String(ADMIN_ID)) return NextResponse.json({ ok: true });
+    // 🛡 ПРОВЕРКА БЕЗОПАСНОСТИ
+    // Если пишет не Админ — игнорируем
+    if (!chatId || String(chatId) !== String(ADMIN_ID)) {
+      return NextResponse.json({ ok: true });
+    }
 
-    // --- ГЛАВНОЕ МЕНЮ (/admin) ---
+    // ==================================================
+    // 1. ГЛАВНОЕ МЕНЮ (/admin)
+    // ==================================================
     if (text === '/admin' || data === 'menu_main') {
       const keyboard = {
         inline_keyboard: [
-          [{ text: '💈 Управление мастерами', callback_data: 'menu_masters' }],
+          [{ text: '📂 Управление Бронями', callback_data: 'menu_bookings' }],
+          [{ text: '💈 Мастера (Салон)', callback_data: 'menu_masters' }],
           [{ text: '📊 Статистика', callback_data: 'menu_stats' }]
         ]
       };
-      const msgText = "👋 Привет, Админ! Что будем делать?";
       
-      if (data) await editMessage(chatId, body.callback_query.message.message_id, msgText, keyboard);
-      else await sendMessage(chatId, msgText, keyboard);
+      const msg = "⚙️ <b>Панель управления Linkalink</b>\nВыбери раздел:";
+      
+      if (data) await editMessage(chatId, body.callback_query.message.message_id, msg, keyboard);
+      else await sendMessage(chatId, msg, keyboard);
     }
 
-    // --- МЕНЮ МАСТЕРОВ ---
+    // ==================================================
+    // 2. БЛОК БРОНИРОВАНИЙ (Глэмпинг + Салон)
+    // ==================================================
+    
+    // --- СПИСОК ПОСЛЕДНИХ ЗАЯВОК ---
+    if (data === 'menu_bookings') {
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      const buttons = bookings?.map((b) => {
+        let icon = '🔴'; // Новый/Ожидает
+        if (b.status === 'confirmed') icon = '🟢'; // Подтвержден
+        if (b.status === 'cancelled') icon = '❌'; // Отменен
+        
+        // Форматируем дату и название для кнопки
+        const shortDate = b.booking_date?.split(' — ')[0] || 'Дата?';
+        const shortClient = b.client_name || 'Гость';
+        
+        return [{
+          text: `${icon} ${shortDate} | ${shortClient}`,
+          callback_data: `view_booking_${b.id}`
+        }];
+      }) || [];
+
+      buttons.push([{ text: '🔙 В главное меню', callback_data: 'menu_main' }]);
+
+      await editMessage(chatId, body.callback_query.message.message_id, "📂 Последние 8 заявок:", { inline_keyboard: buttons });
+    }
+
+    // --- ПРОСМОТР ДЕТАЛЕЙ ЗАЯВКИ ---
+    if (data?.startsWith('view_booking_')) {
+      const id = data.split('_')[2];
+      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
+
+      if (b) {
+        let statusText = '⏳ ОЖИДАЕТ';
+        if (b.status === 'confirmed') statusText = '✅ ПОДТВЕРЖДЕНО';
+        if (b.status === 'cancelled') statusText = '❌ ОТМЕНЕНО';
+
+        const info = `
+📝 <b>ЗАЯВКА #${b.id}</b>
+Статус: ${statusText}
+
+🏷 <b>Услуга/Дом:</b> ${b.service_name}
+📅 <b>Дата:</b> ${b.booking_date}
+💰 <b>Инфо:</b> ${b.time}
+
+👤 <b>Клиент:</b> ${b.client_name}
+📞 <b>Телефон:</b> ${b.client_phone}
+        `;
+
+        const kbd = [];
+        // Логика кнопок:
+        // Если статус не отменен -> можно Отменить
+        // Если статус не подтвержден -> можно Подтвердить
+        if (b.status !== 'cancelled') {
+            if (b.status !== 'confirmed') kbd.push([{ text: '✅ Подтвердить', callback_data: `confirm_${id}` }]);
+            kbd.push([{ text: '❌ Отменить бронь', callback_data: `cancel_${id}` }]);
+        }
+        kbd.push([{ text: '🔙 К списку', callback_data: 'menu_bookings' }]);
+
+        await editMessage(chatId, body.callback_query.message.message_id, info, { inline_keyboard: kbd });
+      }
+    }
+
+    // --- ДЕЙСТВИЕ: ПОДТВЕРДИТЬ ---
+    if (data?.startsWith('confirm_')) {
+      const id = data.split('_')[1];
+      await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', id);
+      
+      // Всплывающее уведомление
+      await answerCallback(queryId, "✅ Бронь подтверждена!");
+      
+      // Обновляем текст сообщения (чтобы статус изменился на глазах)
+      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
+      const info = `✅ <b>БРОНЬ #${b.id} ПОДТВЕРЖДЕНА!</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+      
+      await editMessage(chatId, body.callback_query.message.message_id, info, { 
+          inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
+      });
+    }
+
+    // --- ДЕЙСТВИЕ: ОТМЕНИТЬ ---
+    if (data?.startsWith('cancel_')) {
+      const id = data.split('_')[1];
+      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+      
+      // Всплывающее уведомление
+      await answerCallback(queryId, "❌ Бронь отменена! Даты освобождены.");
+      
+      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
+      const info = `❌ <b>БРОНЬ #${b.id} ОТМЕНЕНА</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+
+      await editMessage(chatId, body.callback_query.message.message_id, info, { 
+          inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
+      });
+    }
+
+    // ==================================================
+    // 3. БЛОК МАСТЕРОВ (Только для Салона)
+    // ==================================================
+    
+    // --- СПИСОК МАСТЕРОВ ---
     if (data === 'menu_masters') {
       const { data: masters } = await supabase.from('masters').select('*').order('id');
-      const keyboard = {
-        inline_keyboard: [
-          ...(masters?.map((m) => [{
-            text: `${m.name} ${m.on_duty ? '🟢 НА СМЕНЕ' : '🔴 ВЫХОДНОЙ'}`,
-            callback_data: `toggle_${m.id}_${m.on_duty}`
-          }]) || []),
-          [{ text: '🔙 Назад в меню', callback_data: 'menu_main' }]
-        ]
-      };
-      await editMessage(chatId, body.callback_query.message.message_id, "💈 Управление сменами:", keyboard);
+      
+      if (!masters || masters.length === 0) {
+         await answerCallback(queryId, "Мастера не найдены в базе.");
+         return NextResponse.json({ ok: true });
+      }
+
+      const buttons = masters.map(m => ([{
+        text: `${m.name} ${m.on_duty ? '🟢 НА СМЕНЕ' : '🔴 ВЫХОДНОЙ'}`,
+        callback_data: `toggle_${m.id}_${m.on_duty}`
+      }]));
+      
+      buttons.push([{ text: '🔙 В главное меню', callback_data: 'menu_main' }]);
+      
+      await editMessage(chatId, body.callback_query.message.message_id, "💈 Управление сменами мастеров:", { inline_keyboard: buttons });
     }
 
     // --- ПЕРЕКЛЮЧЕНИЕ СМЕНЫ ---
@@ -57,81 +180,77 @@ export async function POST(req: Request) {
       const newStatus = currentStatus === 'true' ? false : true;
       await supabase.from('masters').update({ on_duty: newStatus }).eq('id', id);
       
-      // Перерисовываем меню мастеров
+      // Перерисовка меню
       const { data: masters } = await supabase.from('masters').select('*').order('id');
-      const keyboard = {
-        inline_keyboard: [
-          ...(masters?.map((m) => [{
-            text: `${m.name} ${m.on_duty ? '🟢' : '🔴'}`,
-            callback_data: `toggle_${m.id}_${m.on_duty}`
-          }]) || []),
-          [{ text: '🔙 Назад в меню', callback_data: 'menu_main' }]
-        ]
-      };
-      await editMessage(chatId, body.callback_query.message.message_id, "💈 Статус обновлен:", keyboard);
+      const buttons = masters?.map(m => ([{
+        text: `${m.name} ${m.on_duty ? '🟢 НА СМЕНЕ' : '🔴 ВЫХОДНОЙ'}`,
+        callback_data: `toggle_${m.id}_${m.on_duty}`
+      }])) || [];
+      buttons.push([{ text: '🔙 В главное меню', callback_data: 'menu_main' }]);
+
+      await editMessage(chatId, body.callback_query.message.message_id, "💈 Статус обновлен:", { inline_keyboard: buttons });
     }
 
-    // --- МЕНЮ СТАТИСТИКИ (Выбор периода) ---
+    // ==================================================
+    // 4. БЛОК СТАТИСТИКИ
+    // ==================================================
+
+    // --- ВЫБОР ПЕРИОДА ---
     if (data === 'menu_stats') {
       const keyboard = {
         inline_keyboard: [
-          [{ text: '📅 За сегодня', callback_data: 'stats_1' }],
-          [{ text: '🗓 За 7 дней', callback_data: 'stats_7' }],
-          [{ text: '📆 За 30 дней', callback_data: 'stats_30' }],
-          [{ text: '🔙 Назад в меню', callback_data: 'menu_main' }]
+          [{ text: '📅 Сегодня', callback_data: 'stats_1' }, { text: '🗓 7 дней', callback_data: 'stats_7' }],
+          [{ text: '📆 30 дней', callback_data: 'stats_30' }, { text: '♾ За все время', callback_data: 'stats_all' }],
+          [{ text: '🔙 В главное меню', callback_data: 'menu_main' }]
         ]
       };
       await editMessage(chatId, body.callback_query.message.message_id, "📊 Выбери период статистики:", keyboard);
     }
 
-    // --- ПОКАЗ СТАТИСТИКИ ---
+    // --- РАСЧЕТ И ПОКАЗ ---
     if (data?.startsWith('stats_')) {
-      const days = parseInt(data.split('_')[1]);
+      const param = data.split('_')[1];
       
-      // Вычисляем дату начала периода
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - (days === 1 ? 0 : days));
-      startDate.setHours(0, 0, 0, 0); // Начало дня
+      let queryAnalytics = supabase.from('analytics').select('event_type');
+      let queryBookings = supabase.from('bookings').select('id');
+      let periodText = "За все время";
 
-      // 1. Получаем аналитику (клики)
-      const { data: events } = await supabase
-        .from('analytics')
-        .select('event_type')
-        .gte('created_at', startDate.toISOString());
+      if (param !== 'all') {
+        const days = parseInt(param);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - (days === 1 ? 0 : days));
+        startDate.setHours(0, 0, 0, 0);
+        const isoDate = startDate.toISOString();
+        
+        queryAnalytics = queryAnalytics.gte('created_at', isoDate);
+        queryBookings = queryBookings.gte('created_at', isoDate);
+        periodText = days === 1 ? "За сегодня" : `За ${days} дней`;
+      }
 
-      // 2. Получаем записи
-      const { data: bookings } = await supabase
-        .from('bookings')
-        .select('id')
-        .gte('created_at', startDate.toISOString());
+      const [resAnalytics, resBookings] = await Promise.all([queryAnalytics, queryBookings]);
+      const events = resAnalytics.data || [];
+      const totalBookings = resBookings.data?.length || 0;
 
-      // Считаем
-      const views = events?.filter(e => e.event_type === 'view').length || 0;
-      const tgClicks = events?.filter(e => e.event_type === 'click_telegram').length || 0;
-      const instClicks = events?.filter(e => e.event_type === 'click_instagram').length || 0;
-      const phoneClicks = events?.filter(e => e.event_type === 'click_phone').length || 0;
-      const totalBookings = bookings?.length || 0;
-
-      // Конверсия (Записи / Просмотры)
+      const views = events.filter(e => e.event_type === 'view').length || 0;
+      const tgClicks = events.filter(e => e.event_type === 'click_telegram').length || 0;
+      const instClicks = events.filter(e => e.event_type === 'click_instagram').length || 0;
+      const phoneClicks = events.filter(e => e.event_type === 'click_phone').length || 0;
       const conversion = views > 0 ? ((totalBookings / views) * 100).toFixed(1) : 0;
 
       const report = `
-📊 <b>СТАТИСТИКА (${days === 1 ? 'Сегодня' : days + ' дней'})</b>
+📊 <b>СТАТИСТИКА (${periodText})</b>
 
 👀 <b>Просмотров:</b> ${views}
-📝 <b>Записей:</b> ${totalBookings}
+📝 <b>Всего заявок:</b> ${totalBookings}
 📈 <b>Конверсия:</b> ${conversion}%
 
 👇 <b>Клики по контактам:</b>
 ✈️ Telegram: ${tgClicks}
 📸 Instagram: ${instClicks}
 📞 Телефон: ${phoneClicks}
-`;
+      `;
 
-      const keyboard = {
-        inline_keyboard: [[{ text: '🔙 Назад', callback_data: 'menu_stats' }]]
-      };
-
+      const keyboard = { inline_keyboard: [[{ text: '🔙 Назад к выбору', callback_data: 'menu_stats' }]] };
       await editMessage(chatId, body.callback_query.message.message_id, report, keyboard);
     }
 
@@ -142,7 +261,8 @@ export async function POST(req: Request) {
   }
 }
 
-async function sendMessage(chat_id: number, text: string, reply_markup?: any) {
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+async function sendMessage(chat_id: any, text: string, reply_markup?: any) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -150,10 +270,21 @@ async function sendMessage(chat_id: number, text: string, reply_markup?: any) {
   });
 }
 
-async function editMessage(chat_id: number, message_id: number, text: string, reply_markup?: any) {
-  await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
+async function editMessage(chat_id: any, message_id: number, text: string, reply_markup?: any) {
+  // Простая защита от ошибок редактирования (если текст не изменился)
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id, message_id, text, reply_markup, parse_mode: 'HTML' }),
+    });
+  } catch (e) { console.log("Edit msg error", e); }
+}
+
+async function answerCallback(callback_query_id: string, text: string) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id, message_id, text, reply_markup, parse_mode: 'HTML' }),
+    body: JSON.stringify({ callback_query_id, text }),
   });
 }
