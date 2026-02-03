@@ -74,37 +74,87 @@ export async function POST(req: Request) {
     // ==================================================
     
     // --- СПИСОК БРОНЕЙ (только forest-glamp) ---
-    if (data === 'menu_bookings') {
-      // Проверка доступа
+    if (data === 'menu_bookings' || data?.startsWith('menu_bookings_page_')) {
+
       if (!isGlampingOwner) {
         await answerCallback(queryId, "❌ У вас нет доступа к этому разделу");
         return NextResponse.json({ ok: true });
       }
 
-      const { data: bookings } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('business_slug', 'forest-glamp') // ИСПРАВЛЕНО: Только брони глэмпинга!
-        .order('created_at', { ascending: false })
-        .limit(8);
+      // -------- Определяем страницу --------
+      let page = 1;
 
-      const buttons = bookings?.map((b) => {
-        let icon = '🔴'; // pending
+      if (data?.startsWith('menu_bookings_page_')) {
+        page = parseInt(data.split('_')[3]);
+      }
+
+      const limit = 10;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      // -------- Получаем брони с диапазоном --------
+      const { data: bookings, count } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact' })
+        .eq('business_slug', 'forest-glamp')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (!bookings || bookings.length === 0) {
+        await editMessage(
+          chatId,
+          body.callback_query.message.message_id,
+          "📂 Брони отсутствуют.",
+          { inline_keyboard: [[{ text: '🔙 В главное меню', callback_data: 'menu_main' }]] }
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // -------- Формируем кнопки --------
+      const buttons: any[] = bookings.map((b) => {
+        let icon = '🔴';
         if (b.status === 'confirmed') icon = '🟢';
         if (b.status === 'cancelled') icon = '❌';
-        
+
         const shortDate = b.booking_date?.split(' — ')[0] || 'Дата?';
         const shortClient = b.client_name || 'Гость';
-        
+
         return [{
           text: `${icon} ${shortDate} | ${shortClient}`,
           callback_data: `view_booking_${b.id}`
         }];
-      }) || [];
+      });
+
+      // -------- Кнопки пагинации --------
+      const totalPages = Math.ceil((count || 0) / limit);
+      const paginationRow: any[] = [];
+
+      if (page > 1) {
+        paginationRow.push({
+          text: '⬅ Назад',
+          callback_data: `menu_bookings_page_${page - 1}`
+        });
+      }
+
+      if (page < totalPages) {
+        paginationRow.push({
+          text: '➡ Вперед',
+          callback_data: `menu_bookings_page_${page + 1}`
+        });
+      }
+
+      if (paginationRow.length > 0) {
+        buttons.push(paginationRow);
+      }
 
       buttons.push([{ text: '🔙 В главное меню', callback_data: 'menu_main' }]);
 
-      await editMessage(chatId, body.callback_query.message.message_id, "📂 Последние 8 заявок (Forest Glamp):", { inline_keyboard: buttons });
+      await editMessage(
+        chatId,
+        body.callback_query.message.message_id,
+        `📂 Заявки Forest Glamp\nСтраница ${page} из ${totalPages}`,
+        { inline_keyboard: buttons }
+      );
     }
 
     // --- ПРОСМОТР ДЕТАЛЕЙ БРОНИ ---
