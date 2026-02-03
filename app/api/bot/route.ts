@@ -9,11 +9,15 @@ const supabase = createClient(
 );
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_ID = process.env.TELEGRAM_CHAT_ID;
 
-// GET для проверки работоспособности в браузере
+// ID владельцев
+const BARBERSHOP_OWNER_ID = '791282594'; // Владелец барбершопа
+const GLAMPING_OWNER_ID = '5076615429';  // Владелец глэмпинга
+
+
+// GET для проверки работоспособности
 export async function GET() { 
-  return NextResponse.json({ status: "Bot is active (Full Version)" }); 
+  return NextResponse.json({ status: "Bot is active (Multi-Admin Version)" }); 
 }
 
 export async function POST(req: Request) {
@@ -21,53 +25,74 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // Получаем данные из обновления Telegram
-    const chatId = body.message?.chat.id || body.callback_query?.from.id;
+    const chatId =
+    body.message?.chat.id || body.callback_query?.message?.chat?.id;
     const text = body.message?.text;
     const data = body.callback_query?.data;
-    const queryId = body.callback_query?.id; // ID для ответа на нажатие кнопки
+    const queryId = body.callback_query?.id;
 
-    // 🛡 ПРОВЕРКА БЕЗОПАСНОСТИ
-    // Если пишет не Админ — игнорируем
-    if (!chatId || String(chatId) !== String(ADMIN_ID)) {
+    // Проверка: пишет ли разрешенный пользователь
+    const isBarbershopOwner = String(chatId) === BARBERSHOP_OWNER_ID;
+    const isGlampingOwner = String(chatId) === GLAMPING_OWNER_ID;
+
+    if (!isBarbershopOwner && !isGlampingOwner) {
+      // Если чужой человек - игнорируем
       return NextResponse.json({ ok: true });
     }
 
     // ==================================================
-    // 1. ГЛАВНОЕ МЕНЮ (/admin)
+    // ГЛАВНОЕ МЕНЮ (/admin) - РАЗНОЕ ДЛЯ КАЖДОГО ВЛАДЕЛЬЦА
     // ==================================================
     if (text === '/admin' || data === 'menu_main') {
-      const keyboard = {
-        inline_keyboard: [
-          [{ text: '📂 Управление Бронями', callback_data: 'menu_bookings' }],
-          [{ text: '💈 Мастера (Салон)', callback_data: 'menu_masters' }],
-          [{ text: '📊 Статистика', callback_data: 'menu_stats' }]
-        ]
-      };
-      
-      const msg = "⚙️ <b>Панель управления Linkalink</b>\nВыбери раздел:";
+      let keyboard;
+      let msg = "⚙️ <b>Панель управления</b>\nВыбери раздел:";
+
+      if (isBarbershopOwner) {
+        // Меню для владельца БАРБЕРШОПА
+        keyboard = {
+          inline_keyboard: [
+            [{ text: '📊 Статистика (Elegant Barbershop)', callback_data: 'stats_barbershop' }],
+            [{ text: '💈 Мастера', callback_data: 'menu_masters' }]
+          ]
+        };
+      } else if (isGlampingOwner) {
+        // Меню для владельца ГЛЭМПИНГА
+        keyboard = {
+          inline_keyboard: [
+            [{ text: '📊 Статистика (Forest Glamp)', callback_data: 'stats_glamping' }],
+            [{ text: '📂 Брони', callback_data: 'menu_bookings' }]
+          ]
+        };
+      }
       
       if (data) await editMessage(chatId, body.callback_query.message.message_id, msg, keyboard);
       else await sendMessage(chatId, msg, keyboard);
     }
 
     // ==================================================
-    // 2. БЛОК БРОНИРОВАНИЙ (Глэмпинг + Салон)
+    // БЛОК БРОНИРОВАНИЙ (ТОЛЬКО ДЛЯ ГЛЭМПИНГА)
     // ==================================================
     
-    // --- СПИСОК ПОСЛЕДНИХ ЗАЯВОК ---
+    // --- СПИСОК БРОНЕЙ (только forest-glamp) ---
     if (data === 'menu_bookings') {
+      // Проверка доступа
+      if (!isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа к этому разделу");
+        return NextResponse.json({ ok: true });
+      }
+
       const { data: bookings } = await supabase
         .from('bookings')
         .select('*')
+        .eq('business_slug', 'forest-glamp') // ИСПРАВЛЕНО: Только брони глэмпинга!
         .order('created_at', { ascending: false })
         .limit(8);
 
       const buttons = bookings?.map((b) => {
-        let icon = '🔴'; // Новый/Ожидает
-        if (b.status === 'confirmed') icon = '🟢'; // Подтвержден
-        if (b.status === 'cancelled') icon = '❌'; // Отменен
+        let icon = '🔴'; // pending
+        if (b.status === 'confirmed') icon = '🟢';
+        if (b.status === 'cancelled') icon = '❌';
         
-        // Форматируем дату и название для кнопки
         const shortDate = b.booking_date?.split(' — ')[0] || 'Дата?';
         const shortClient = b.client_name || 'Гость';
         
@@ -79,13 +104,24 @@ export async function POST(req: Request) {
 
       buttons.push([{ text: '🔙 В главное меню', callback_data: 'menu_main' }]);
 
-      await editMessage(chatId, body.callback_query.message.message_id, "📂 Последние 8 заявок:", { inline_keyboard: buttons });
+      await editMessage(chatId, body.callback_query.message.message_id, "📂 Последние 8 заявок (Forest Glamp):", { inline_keyboard: buttons });
     }
 
-    // --- ПРОСМОТР ДЕТАЛЕЙ ЗАЯВКИ ---
+    // --- ПРОСМОТР ДЕТАЛЕЙ БРОНИ ---
     if (data?.startsWith('view_booking_')) {
+      // Проверка доступа
+      if (!isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+
       const id = data.split('_')[2];
-      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
+      const { data: b } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', id)
+        .eq('business_slug', 'forest-glamp') // ИСПРАВЛЕНО: Проверяем что это бронь глэмпинга
+        .single();
 
       if (b) {
         let statusText = '⏳ ОЖИДАЕТ';
@@ -96,8 +132,8 @@ export async function POST(req: Request) {
 📝 <b>ЗАЯВКА #${b.id}</b>
 Статус: ${statusText}
 
-🏷 <b>Услуга/Дом:</b> ${b.service_name}
-📅 <b>Дата:</b> ${b.booking_date}
+🏷 <b>Дом:</b> ${b.service_name}
+📅 <b>Даты:</b> ${b.booking_date}
 💰 <b>Инфо:</b> ${b.time}
 
 👤 <b>Клиент:</b> ${b.client_name}
@@ -105,9 +141,6 @@ export async function POST(req: Request) {
         `;
 
         const kbd = [];
-        // Логика кнопок:
-        // Если статус не отменен -> можно Отменить
-        // Если статус не подтвержден -> можно Подтвердить
         if (b.status !== 'cancelled') {
             if (b.status !== 'confirmed') kbd.push([{ text: '✅ Подтвердить', callback_data: `confirm_${id}` }]);
             kbd.push([{ text: '❌ Отменить бронь', callback_data: `cancel_${id}` }]);
@@ -115,48 +148,92 @@ export async function POST(req: Request) {
         kbd.push([{ text: '🔙 К списку', callback_data: 'menu_bookings' }]);
 
         await editMessage(chatId, body.callback_query.message.message_id, info, { inline_keyboard: kbd });
+      } else {
+        await answerCallback(queryId, "❌ Бронь не найдена или у вас нет доступа");
       }
     }
 
-    // --- ДЕЙСТВИЕ: ПОДТВЕРДИТЬ ---
+    // --- ДЕЙСТВИЕ: ПОДТВЕРДИТЬ (только глэмпинг) ---
     if (data?.startsWith('confirm_')) {
+      // Проверка доступа
+      if (!isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+
       const id = data.split('_')[1];
-      await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', id);
       
-      // Всплывающее уведомление
-      await answerCallback(queryId, "✅ Бронь подтверждена!");
+      // ИСПРАВЛЕНО: Обновляем только если это бронь глэмпинга
+      await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .eq('id', id)
+        .eq('business_slug', 'forest-glamp');
       
-      // Обновляем текст сообщения (чтобы статус изменился на глазах)
-      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
-      const info = `✅ <b>БРОНЬ #${b.id} ПОДТВЕРЖДЕНА!</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+      await answerCallback(queryId, "✅ Бронь подтверждена! Даты закрыты в календаре.");
       
-      await editMessage(chatId, body.callback_query.message.message_id, info, { 
-          inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
-      });
+      const { data: b } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', id)
+        .eq('business_slug', 'forest-glamp')
+        .single();
+
+      if (b) {
+        const info = `✅ <b>БРОНЬ #${b.id} ПОДТВЕРЖДЕНА!</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+        
+        await editMessage(chatId, body.callback_query.message.message_id, info, { 
+            inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
+        });
+      }
     }
 
-    // --- ДЕЙСТВИЕ: ОТМЕНИТЬ ---
+    // --- ДЕЙСТВИЕ: ОТМЕНИТЬ (только глэмпинг) ---
     if (data?.startsWith('cancel_')) {
+      // Проверка доступа
+      if (!isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+
       const id = data.split('_')[1];
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
       
-      // Всплывающее уведомление
+      // ИСПРАВЛЕНО: Отменяем только если это бронь глэмпинга
+      await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', id)
+        .eq('business_slug', 'forest-glamp');
+      
       await answerCallback(queryId, "❌ Бронь отменена! Даты освобождены.");
       
-      const { data: b } = await supabase.from('bookings').select('*').eq('id', id).single();
-      const info = `❌ <b>БРОНЬ #${b.id} ОТМЕНЕНА</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+      const { data: b } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', id)
+        .eq('business_slug', 'forest-glamp')
+        .single();
 
-      await editMessage(chatId, body.callback_query.message.message_id, info, { 
-          inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
-      });
+      if (b) {
+        const info = `❌ <b>БРОНЬ #${b.id} ОТМЕНЕНА</b>\n\n🏷 ${b.service_name}\n📅 ${b.booking_date}\n👤 ${b.client_name}`;
+
+        await editMessage(chatId, body.callback_query.message.message_id, info, { 
+            inline_keyboard: [[{ text: '🔙 К списку', callback_data: 'menu_bookings' }]] 
+        });
+      }
     }
 
     // ==================================================
-    // 3. БЛОК МАСТЕРОВ (Только для Салона)
+    // БЛОК МАСТЕРОВ (ТОЛЬКО ДЛЯ БАРБЕРШОПА)
     // ==================================================
     
-    // --- СПИСОК МАСТЕРОВ ---
     if (data === 'menu_masters') {
+      // Проверка доступа
+      if (!isBarbershopOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа к этому разделу");
+        return NextResponse.json({ ok: true });
+      }
+
       const { data: masters } = await supabase.from('masters').select('*').order('id');
       
       if (!masters || masters.length === 0) {
@@ -176,11 +253,16 @@ export async function POST(req: Request) {
 
     // --- ПЕРЕКЛЮЧЕНИЕ СМЕНЫ ---
     if (data?.startsWith('toggle_')) {
+      // Проверка доступа
+      if (!isBarbershopOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+
       const [_, id, currentStatus] = data.split('_');
       const newStatus = currentStatus === 'true' ? false : true;
       await supabase.from('masters').update({ on_duty: newStatus }).eq('id', id);
       
-      // Перерисовка меню
       const { data: masters } = await supabase.from('masters').select('*').order('id');
       const buttons = masters?.map(m => ([{
         text: `${m.name} ${m.on_duty ? '🟢 НА СМЕНЕ' : '🔴 ВЫХОДНОЙ'}`,
@@ -192,31 +274,82 @@ export async function POST(req: Request) {
     }
 
     // ==================================================
-    // 4. БЛОК СТАТИСТИКИ
+    // БЛОК СТАТИСТИКИ
     // ==================================================
 
-    // --- ВЫБОР ПЕРИОДА ---
-    if (data === 'menu_stats') {
+    // --- СТАТИСТИКА БАРБЕРШОПА ---
+    if (data === 'stats_barbershop') {
+      // Проверка доступа
+      if (!isBarbershopOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа к этому разделу");
+        return NextResponse.json({ ok: true });
+      }
+
       const keyboard = {
         inline_keyboard: [
-          [{ text: '📅 Сегодня', callback_data: 'stats_1' }, { text: '🗓 7 дней', callback_data: 'stats_7' }],
-          [{ text: '📆 30 дней', callback_data: 'stats_30' }, { text: '♾ За все время', callback_data: 'stats_all' }],
+          [{ text: '📅 Сегодня', callback_data: 'calc_stats_barbershop_1' }],
+          [{ text: '🗓 7 дней', callback_data: 'calc_stats_barbershop_7' }],
+          [{ text: '📆 30 дней', callback_data: 'calc_stats_barbershop_30' }],
+          [{ text: '♾ За все время', callback_data: 'calc_stats_barbershop_all' }],
           [{ text: '🔙 В главное меню', callback_data: 'menu_main' }]
         ]
       };
-      await editMessage(chatId, body.callback_query.message.message_id, "📊 Выбери период статистики:", keyboard);
+      await editMessage(chatId, body.callback_query.message.message_id, "📊 Статистика Elegant Barbershop\nВыбери период:", keyboard);
     }
 
-    // --- РАСЧЕТ И ПОКАЗ ---
-    if (data?.startsWith('stats_')) {
-      const param = data.split('_')[1];
+    // --- СТАТИСТИКА ГЛЭМПИНГА ---
+    if (data === 'stats_glamping') {
+      // Проверка доступа
+      if (!isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа к этому разделу");
+        return NextResponse.json({ ok: true });
+      }
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: '📅 Сегодня', callback_data: 'calc_stats_glamping_1' }],
+          [{ text: '🗓 7 дней', callback_data: 'calc_stats_glamping_7' }],
+          [{ text: '📆 30 дней', callback_data: 'calc_stats_glamping_30' }],
+          [{ text: '♾ За все время', callback_data: 'calc_stats_glamping_all' }],
+          [{ text: '🔙 В главное меню', callback_data: 'menu_main' }]
+        ]
+      };
+      await editMessage(chatId, body.callback_query.message.message_id, "📊 Статистика Forest Glamp\nВыбери период:", keyboard);
+    }
+
+    // --- РАСЧЕТ СТАТИСТИКИ ---
+    if (data?.startsWith('calc_stats_')) {
+      const parts = data.split('_');
+      const businessType = parts[2]; // 'barbershop' или 'glamping'
+      const period = parts[3]; // '1', '7', '30', 'all'
       
-      let queryAnalytics = supabase.from('analytics').select('event_type');
-      let queryBookings = supabase.from('bookings').select('id');
+      // Проверка доступа
+      if (businessType === 'barbershop' && !isBarbershopOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+      if (businessType === 'glamping' && !isGlampingOwner) {
+        await answerCallback(queryId, "❌ У вас нет доступа");
+        return NextResponse.json({ ok: true });
+      }
+      
+      const businessSlug = businessType === 'barbershop' ? 'elegant-barbershop' : 'forest-glamp';
+      const businessName = businessType === 'barbershop' ? 'Elegant Barbershop' : 'Forest Glamp';
+      
+      let queryAnalytics = supabase
+        .from('analytics')
+        .select('event_type')
+        .eq('business_slug', businessSlug);
+      
+      let queryBookings = supabase
+        .from('bookings')
+        .select('id')
+        .eq('business_slug', businessSlug);
+      
       let periodText = "За все время";
 
-      if (param !== 'all') {
-        const days = parseInt(param);
+      if (period !== 'all') {
+        const days = parseInt(period);
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - (days === 1 ? 0 : days));
         startDate.setHours(0, 0, 0, 0);
@@ -238,7 +371,8 @@ export async function POST(req: Request) {
       const conversion = views > 0 ? ((totalBookings / views) * 100).toFixed(1) : 0;
 
       const report = `
-📊 <b>СТАТИСТИКА (${periodText})</b>
+📊 <b>${businessName}</b>
+<b>${periodText}</b>
 
 👀 <b>Просмотров:</b> ${views}
 📝 <b>Всего заявок:</b> ${totalBookings}
@@ -250,7 +384,9 @@ export async function POST(req: Request) {
 📞 Телефон: ${phoneClicks}
       `;
 
-      const keyboard = { inline_keyboard: [[{ text: '🔙 Назад к выбору', callback_data: 'menu_stats' }]] };
+      const backButton = businessType === 'barbershop' ? 'stats_barbershop' : 'stats_glamping';
+      const keyboard = { inline_keyboard: [[{ text: '🔙 Назад к выбору', callback_data: backButton }]] };
+      
       await editMessage(chatId, body.callback_query.message.message_id, report, keyboard);
     }
 
@@ -271,7 +407,6 @@ async function sendMessage(chat_id: any, text: string, reply_markup?: any) {
 }
 
 async function editMessage(chat_id: any, message_id: number, text: string, reply_markup?: any) {
-  // Простая защита от ошибок редактирования (если текст не изменился)
   try {
     await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
       method: 'POST',

@@ -13,7 +13,6 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    // ИСПРАВЛЕНО: request.json() вместо req.json()
     const body = await request.json();
     
     // Данные от клиента
@@ -21,7 +20,15 @@ export async function POST(request: Request) {
     const clientName = body.clientName || body.name || "Не указано";
     const clientPhone = body.clientPhone || body.phone || "Не указано";
 
-    // 1. Сохраняем в Supabase и СРАЗУ ПОЛУЧАЕМ ID (select)
+    // Определяем тип бизнеса
+    const isBarbershop = businessName === 'elegant-barbershop';
+    const isGlamping = businessName === 'forest-glamp';
+
+    // БАРБЕРШОП: автоматическое подтверждение, статус = confirmed
+    // ГЛЭМПИНГ: ожидание подтверждения, статус = pending
+    const initialStatus = isBarbershop ? 'confirmed' : 'pending';
+
+    // 1. Сохраняем в Supabase
     const { data: insertedData, error: dbError } = await supabase
       .from('bookings')
       .insert([
@@ -33,10 +40,10 @@ export async function POST(request: Request) {
           master_name: master, 
           booking_date: date,
           time: time,
-          status: 'pending' // Статус по умолчанию
+          status: initialStatus // Барбершоп сразу confirmed, глэмпинг pending
         }
       ])
-      .select() // Важно: возвращает созданную строку
+      .select()
       .single();
 
     if (dbError) {
@@ -46,10 +53,32 @@ export async function POST(request: Request) {
 
     const bookingId = insertedData.id;
 
-    // 2. Формируем сообщение
-    const message = `
+    // 2. Формируем сообщение в зависимости от типа бизнеса
+    let message = '';
+    let keyboard = undefined;
+
+    if (isBarbershop) {
+      // БАРБЕРШОП: простое информационное сообщение БЕЗ кнопок
+      message = `
+✅ <b>НОВАЯ ЗАПИСЬ #${bookingId}</b> (автоматически подтверждена)
+💈 <b>Elegant Barbershop</b>
+
+👤 <b>Клиент:</b> ${clientName}
+📞 <b>Телефон:</b> ${clientPhone}
+
+✂️ <b>Услуга:</b> ${service}
+👨‍💼 <b>Мастер:</b> ${master}
+📅 <b>Дата:</b> ${date}
+⏰ <b>Время:</b> ${time}
+`;
+      // Кнопок нет для барбершопа
+      keyboard = undefined;
+
+    } else if (isGlamping) {
+      // ГЛЭМПИНГ: сообщение с кнопками подтверждения
+      message = `
 🔥 <b>НОВАЯ ЗАЯВКА #${bookingId}</b>
-🏢 <b>${businessName}</b>
+🏕 <b>Forest Glamp</b>
 
 👤 <b>Гость:</b> ${clientName}
 📞 <b>Связь:</b> ${clientPhone}
@@ -58,18 +87,19 @@ export async function POST(request: Request) {
 📅 <b>Даты:</b> ${date}
 💰 <b>Инфо:</b> ${time}
 `;
-
-    // 3. Добавляем кнопки (Inline Keyboard)
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '✅ Подтвердить', callback_data: `confirm_${bookingId}` },
-          { text: '❌ Отменить', callback_data: `cancel_${bookingId}` }
+      
+      // Кнопки для глэмпинга
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '✅ Подтвердить', callback_data: `confirm_${bookingId}` },
+            { text: '❌ Отменить', callback_data: `cancel_${bookingId}` }
+          ]
         ]
-      ]
-    };
+      };
+    }
 
-    // 4. Отправляем в Телеграм
+    // 3. Отправляем в Телеграм
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,7 +107,7 @@ export async function POST(request: Request) {
         chat_id: CHAT_ID, 
         text: message, 
         parse_mode: 'HTML',
-        reply_markup: keyboard // Прикрепляем кнопки
+        reply_markup: keyboard // Для барбершопа undefined, для глэмпинга есть кнопки
       }),
     });
 
