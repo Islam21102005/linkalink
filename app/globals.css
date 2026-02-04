@@ -1,14 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
-
-
 @theme {
   /* Анимации */
   --animate-float-slow: float-slow 8s ease-in-out infinite;
   --animate-float-delayed: float-delayed 10s ease-in-out infinite 1s;
   --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
   --animate-shimmer: shimmer 2s infinite;
+  --animate-slide-up: slide-up 0.6s ease-out;
+  --animate-slide-down: slide-down 0.6s ease-out;
+  --animate-slide-left: slide-left 0.6s ease-out;
+  --animate-slide-right: slide-right 0.6s ease-out;
+  --animate-fade-in: fade-in 0.8s ease-out;
+  --animate-scale-in: scale-in 0.5s ease-out;
+  --animate-bounce-gentle: bounce-gentle 2s ease-in-out infinite;
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-gradient: gradient 8s linear infinite;
 }
 
 @keyframes float-slow {
@@ -44,6 +51,100 @@
   }
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(236, 72, 153, 0.6);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
@@ -96,4 +197,30 @@ html {
 ::-moz-selection {
   background-color: rgba(236, 72, 153, 0.3);
   color: white;
+}
+
+/* Анимация для появления элементов */
+.animate-on-scroll {
+  opacity: 0;
+  animation: slide-up 0.8s ease-out forwards;
+}
+
+/* Hover эффекты */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-5px) scale(1.02);
+}
+
+/* Градиентная анимация для текста */
+.gradient-text-animated {
+  background-size: 200% 200%;
+  animation: gradient 8s ease infinite;
+}
+
+/* Пульсирующий эффект для кнопок */
+.pulse-button {
+  animation: glow 3s ease-in-out infinite;
 }
