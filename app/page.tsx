@@ -470,7 +470,7 @@ export default function Home() {
               />
               <ResultCard 
                 metric="+8-15%"
-                description="Повышение среднего чека за счет дополнительных услуг"
+                description="Повышение среднего чека за счет дополнительных услуг!!!"
                 color="from-green-500 to-pink-500"
               />
             </div>
