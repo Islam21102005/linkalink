@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Loader2, Plus, Minus, CheckCircle, Users, LayoutGrid, Receipt } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import Image from "next/image";
 
 interface GlampingWidgetProps {
   houses: any[];
@@ -149,18 +148,27 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
         .filter(([_, c]: any) => c > 0)
         .map(([n, c]) => `${n} x${c}`).join(", ");
 
-    await fetch("/api/telegram", {
-      method: "POST",
-      body: JSON.stringify({
-        businessName,
-        clientName: booking.clientName,
-        clientPhone: booking.clientPhone,
-        service: `🏡 ${booking.house.name}`,
-        master: `Допы: ${addonsText || "Нет"}`,
-        date: `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)}`,
-        time: `Сумма: ${total}₽ (Предоплата ${deposit}₽)`
-      }),
-    });
+    console.log("🏕 Отправка заявки глэмпинга:", { businessName });
+
+    try {
+      await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessSlug: businessName, // Передаем slug бизнеса
+          clientName: booking.clientName,
+          clientPhone: booking.clientPhone,
+          service: `🏡 ${booking.house.name}`,
+          master: `Допы: ${addonsText || "Нет"}`,
+          date: `${formatDate(booking.startDate)} — ${formatDate(booking.endDate)}`,
+          time: `Сумма: ${total}₽ (Предоплата ${deposit}₽)`
+        }),
+      });
+
+      console.log("✅ Заявка глэмпинга отправлена");
+    } catch (error) {
+      console.error("❌ Ошибка отправки заявки глэмпинга:", error);
+    }
 
     setLoading(false);
     
@@ -197,14 +205,11 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                     <h3 className="text-3xl font-black uppercase italic tracking-tighter">Наши дома</h3>
                     {houses.map((house) => (
                         <div key={house.id} onClick={() => { setBooking({...booking, house}); setStep(2); }} className="bg-white rounded-[32px] overflow-hidden shadow-lg cursor-pointer group hover:scale-[1.02] transition-transform">
-                            <div className="h-64 relative">
-                                <Image 
+                            <div className="h-64 relative overflow-hidden">
+                                <img 
                                   src={house.cover || house.image} 
                                   alt={house.name}
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                  sizes="(max-width: 768px) 100vw, 50vw"
-                                  unoptimized
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 <div className="absolute bottom-6 left-6 right-6">
@@ -225,13 +230,10 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                        <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
                           {(booking.house.gallery || [booking.house.cover]).map((img: string, i: number) => (
                             <div key={i} className="min-w-full h-full snap-center relative">
-                              <Image 
+                              <img 
                                 src={img} 
                                 alt={`${booking.house.name} - фото ${i + 1}`}
-                                fill
-                                className="object-cover"
-                                sizes="100vw"
-                                unoptimized
+                                className="w-full h-full object-cover"
                               />
                             </div>
                           ))}

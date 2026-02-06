@@ -329,18 +329,43 @@ export default function Home() {
               </motion.div>
             </div>
 
-            {/* Right - Phone Mockup С АНИМАЦИЕЙ */}
+            {/* Right - Phone Mockup С ПЛАВАЮЩЕЙ АНИМАЦИЕЙ */}
             <div className="relative hidden lg:flex justify-center lg:justify-end mt-8 lg:mt-0">
               <motion.div 
                 className="relative w-full max-w-[280px] sm:max-w-xs lg:max-w-sm"
                 initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 0.3 }}
+                animate={{ 
+                  opacity: 1, 
+                  y: [0, -20, 0], // Плавающее движение вверх-вниз
+                }}
+                transition={{ 
+                  opacity: { duration: 1, delay: 0.3 },
+                  y: {
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }
+                }}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500/30 to-purple-500/30 blur-3xl scale-110" />
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-r from-pink-500/30 to-purple-500/30 blur-3xl scale-110"
+                  animate={{
+                    scale: [1.1, 1.2, 1.1],
+                    opacity: [0.3, 0.5, 0.3]
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/20 to-transparent blur-2xl" />
                 
-                <div className="relative z-10">
+                <motion.div 
+                  className="relative z-10"
+                  whileHover={{ scale: 1.05, rotate: 2 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
                   <GlassCard depth="floating" className="rounded-[2.5rem] lg:rounded-[3rem] p-2 lg:p-3 shadow-2xl">
                     <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden">
                       <div className="relative aspect-[9/19]">
@@ -365,7 +390,7 @@ export default function Home() {
                       </div>
                     </div>
                   </GlassCard>
-                </div>
+                </motion.div>
               </motion.div>
             </div>
           </div>
@@ -622,7 +647,7 @@ export default function Home() {
               <PricingCard 
                 title="Старт"
                 price="10 000₽/мес"
-                setupPrice="15 000₽"
+                setupPrice="5 000₽"
                 features={[
                   "Одностраничный сайт",
                   "Базовая онлайн-запись",
@@ -635,7 +660,7 @@ export default function Home() {
               <PricingCard 
                 title="Бизнес"
                 price="20 000₽/мес"
-                setupPrice="30 000₽"
+                setupPrice="5 000₽"
                 features={[
                   "Многостраничный сайт",
                   "Расширенная система записи",
@@ -649,7 +674,7 @@ export default function Home() {
               <PricingCard 
                 title="Премиум"
                 price="35 000₽/мес"
-                setupPrice="50 000₽"
+                setupPrice="5 000₽"
                 features={[
                   "Индивидуальный дизайн",
                   "Полная автоматизация",

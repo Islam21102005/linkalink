@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, User, Scissors, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import Image from "next/image";
 
 export default function BookingWidget({ services, masters, businessName }: any) {
   const [isOpen, setIsOpen] = useState(false);
@@ -71,7 +70,7 @@ export default function BookingWidget({ services, masters, businessName }: any) 
     setLoading(true);
     
     const payload = {
-        businessName,
+        businessSlug: businessName, // Передаем slug бизнеса
         service: `${formData.service} (${formData.price})`,
         master: formData.master,
         date: formData.date,
@@ -80,11 +79,19 @@ export default function BookingWidget({ services, masters, businessName }: any) 
         clientPhone: formData.phone
     };
 
-    await fetch("/api/telegram", { 
-      method: "POST", 
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload) 
-    });
+    console.log("💈 Отправка записи барбершопа:", payload);
+
+    try {
+      await fetch("/api/telegram", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload) 
+      });
+      
+      console.log("✅ Запись барбершопа отправлена");
+    } catch (error) {
+      console.error("❌ Ошибка отправки записи барбершопа:", error);
+    }
     
     setLoading(false);
     setStep(4);
@@ -152,14 +159,11 @@ export default function BookingWidget({ services, masters, businessName }: any) 
                           onClick={() => { setFormData(p => ({...p, master: m.name})); setStep(formData.service ? 3 : 1); }} 
                           className="flex items-center gap-4 p-4 border border-gray-100 rounded-[24px] hover:border-black cursor-pointer transition-all relative"
                         >
-                            <div className="relative w-16 h-16">
-                                <Image 
+                            <div className="relative w-16 h-16 flex-shrink-0">
+                                <img 
                                   src={m.photo_url || "/placeholder-avatar.svg"} 
                                   alt={m.name}
-                                  fill
-                                  className="rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm"
-                                  sizes="64px"
-                                  unoptimized
+                                  className="w-full h-full rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm"
                                 />
                                 
                                 {m.on_duty && (

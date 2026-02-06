@@ -22,23 +22,28 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Данные от клиента
-    const { businessName, service, master, date, time } = body;
+    // Данные от клиента - принимаем и businessName и businessSlug для совместимости
+    const businessSlug = body.businessSlug || body.businessName || body.slug || 'linkalink-main';
+    const { service, master, date, time } = body;
     const clientName = body.clientName || body.name || "Не указано";
     const clientPhone = body.clientPhone || body.phone || "Не указано";
 
+    console.log("📥 Получена заявка:", { businessSlug, clientName, service });
+
     // Определяем тип бизнеса и получаем нужный chat_id
-    const isBarbershop = businessName === 'elegant-barbershop';
-    const isGlamping = businessName === 'forest-glamp';
-    const isMainPage = businessName === 'linkalink-main';
+    const isBarbershop = businessSlug === 'elegant-barbershop';
+    const isGlamping = businessSlug === 'forest-glamp';
+    const isMainPage = businessSlug === 'linkalink-main';
 
     // Получаем chat_id для конкретного бизнеса
-    const CHAT_ID = BUSINESS_CHAT_IDS[businessName] || process.env.TELEGRAM_CHAT_ID!;
+    const CHAT_ID = BUSINESS_CHAT_IDS[businessSlug] || process.env.TELEGRAM_CHAT_ID!;
 
     if (!CHAT_ID) {
-      console.error(`❌ Не найден CHAT_ID для бизнеса: ${businessName}`);
+      console.error(`❌ Не найден CHAT_ID для бизнеса: ${businessSlug}`);
       return NextResponse.json({ error: 'Chat ID not configured' }, { status: 500 });
     }
+
+    console.log("✅ Используется CHAT_ID:", CHAT_ID);
 
     // БАРБЕРШОП: автоматическое подтверждение, статус = confirmed
     // ГЛЭМПИНГ: ожидание подтверждения, статус = pending
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
         .from('bookings')
         .insert([
           { 
-            business_slug: businessName, 
+            business_slug: businessSlug, 
             client_name: clientName, 
             client_phone: clientPhone, 
             service_name: service, 
@@ -71,6 +76,7 @@ export async function POST(request: Request) {
         // Не останавливаем выполнение, просто логируем
       } else {
         bookingId = insertedData.id;
+        console.log("✅ Запись сохранена в БД, ID:", bookingId);
       }
     }
 
@@ -158,6 +164,8 @@ export async function POST(request: Request) {
         details: telegramData 
       }, { status: 500 });
     }
+
+    console.log("✅ Уведомление отправлено в Telegram");
 
     return NextResponse.json({ success: true, bookingId });
 

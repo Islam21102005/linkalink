@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { Instagram, Send, Phone } from "lucide-react"; 
 import BookingWidget from "@/components/BookingWidget";
-import GlampingWidget from "@/components/GlampingWidget"; // Импорт нового виджета
+import GlampingWidget from "@/components/GlampingWidget";
 import AboutWidget from "@/components/AboutWidget";
 import PromotionsWidget from "@/components/PromotionsWidget";
 import TrackingSocials from "@/components/TrackingSocials";
@@ -65,19 +65,19 @@ export default async function BusinessPage({
            
            <AboutWidget business={business} />
 
-           {/* 👇 ЛОГИКА ВЫБОРА ВИДЖЕТА 👇 */}
+           {/* 👇 ЛОГИКА ВЫБОРА ВИДЖЕТА - ПЕРЕДАЕМ SLUG 👇 */}
            {business.business_type === 'glamping' ? (
              <GlampingWidget 
-                houses={business.services || []} // Дома храним в services
-                addons={business.addons || []}   // Допы в addons
-                businessName={business.name}
+                houses={business.services || []}
+                addons={business.addons || []}
+                businessName={slug}  /* ИСПРАВЛЕНО: передаем slug вместо name */
                 managerTelegram={business.telegram}
              />
            ) : (
              <BookingWidget 
                services={business.services || []} 
                masters={masters || []} 
-               businessName={business.name} 
+               businessName={slug}  /* ИСПРАВЛЕНО: передаем slug вместо name */
              />
            )}
 
