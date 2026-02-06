@@ -30,18 +30,6 @@ const fadeInUp: Variants = {
   }
 };
 
-const floatAnimation: Variants = {
-  animate: {
-    y: [0, -20, 0],
-    rotate: [0, 2, -2, 0],
-    transition: { 
-      duration: 6, 
-      repeat: Infinity, 
-      ease: "easeInOut"
-    }
-  }
-};
-
 type DepthType = 'base' | 'elevated' | 'floating' | 'nav';
 
 interface GlassCardProps {
@@ -291,12 +279,9 @@ export default function Home() {
                   { value: "2,5x", label: "Рост продаж", gradient: "from-purple-400 to-cyan-400" },
                   { value: "24/7", label: "Поддержка", gradient: "from-cyan-400 to-pink-400" }
                 ].map((item, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    whileHover={{ scale: 1.1, y: -5 }}
-                    animate={{ y: [0, -3, 0] }}
-                    transition={{ duration: 3, repeat: Infinity, delay: i * 0.4 }}
-                    className="text-center lg:text-left cursor-pointer"
+                    className="text-center lg:text-left"
                   >
                     <div className={`text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r ${item.gradient} bg-clip-text text-transparent mb-1`}>
                       {item.value}
@@ -304,17 +289,13 @@ export default function Home() {
                     <div className="text-white/50 text-xs md:text-sm">
                       {item.label}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </motion.div>
             </div>
 
             {/* Right - Enhanced Phone Mockup */}
-            <motion.div 
-              variants={floatAnimation}
-              animate="animate"
-              className="relative hidden lg:flex justify-center lg:justify-end mt-8 lg:mt-0"
-            >
+            <div className="relative hidden lg:flex justify-center lg:justify-end mt-8 lg:mt-0">
               <div className="relative w-full max-w-[280px] sm:max-w-xs lg:max-w-sm">
                 {/* Glow Effects */}
                 <div className="absolute inset-0 bg-gradient-to-r from-pink-500/30 to-purple-500/30 blur-3xl scale-110" />
@@ -350,34 +331,26 @@ export default function Home() {
                   </GlassCard>
                   
                   {/* Floating Cards - скрыты на мобильных */}
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                    className="absolute -left-8 xl:-left-13 top-3/4 hidden lg:block"
-                  >
+                  <div className="absolute -left-8 xl:-left-13 top-3/4 hidden lg:block">
                     <GlassCard depth="elevated" className="px-3 py-2 rounded-2xl">
                       <div className="flex items-center gap-2">
                         <Star className="text-yellow-400" size={14} />
                         <span className="text-xs font-bold whitespace-nowrap">4.9 Rating</span>
                       </div>
                     </GlassCard>
-                  </motion.div>
+                  </div>
                   
-                  <motion.div
-                    animate={{ y: [0, 10, 0] }}
-                    transition={{ duration: 4, repeat: Infinity, delay: 1 }}
-                    className="absolute -right-6 xl:-right-8 bottom-2/3 hidden lg:block"
-                  >
+                  <div className="absolute -right-6 xl:-right-8 bottom-2/3 hidden lg:block">
                     <GlassCard depth="elevated" className="px-3 py-2 rounded-2xl">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="text-green-400" size={14} />
                         <span className="text-xs font-bold whitespace-nowrap">+150% ROI</span>
                       </div>
                     </GlassCard>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
@@ -886,13 +859,9 @@ function ServiceCard({ icon, title, description }: { icon: React.ReactNode, titl
       viewport={{ once: true }}
     >
       <GlassCard depth="elevated" hoverEffect className="p-6 md:p-8 rounded-2xl md:rounded-3xl h-full">
-        <motion.div
-          animate={{ rotate: [0, 5, -5, 0] }}
-          transition={{ duration: 4, repeat: Infinity }}
-          className="text-pink-400 mb-3 md:mb-4"
-        >
+        <div className="text-pink-400 mb-3 md:mb-4">
           {icon}
-        </motion.div>
+        </div>
         <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 uppercase tracking-tight">{title}</h3>
         <p className="text-white/60 text-sm leading-relaxed">{description}</p>
       </GlassCard>
@@ -911,13 +880,11 @@ function ResultCard({ metric, description, color }: { metric: string, descriptio
       viewport={{ once: true }}
     >
       <GlassCard depth="elevated" className="p-6 md:p-8 rounded-2xl md:rounded-3xl text-center h-full">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+        <div
           className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r ${color} bg-clip-text text-transparent`}
         >
           {metric}
-        </motion.div>
+        </div>
         <p className="text-white/60 text-sm leading-relaxed">{description}</p>
       </GlassCard>
     </motion.div>
@@ -931,17 +898,13 @@ function ClientType({ icon, title }: { icon: React.ReactNode, title: string }) {
       variants={fadeInUp}
       initial="initial"
       whileInView="whileInView"
-      whileHover={{ scale: 1.1, rotate: 5 }}
+      whileHover={{ scale: 1.1 }}
       viewport={{ once: true }}
     >
       <GlassCard depth="elevated" hoverEffect className="p-6 md:p-8 rounded-2xl md:rounded-3xl text-center h-full flex flex-col items-center justify-center gap-3 md:gap-4">
-        <motion.div
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 5, repeat: Infinity }}
-          className="text-purple-400"
-        >
+        <div className="text-purple-400">
           {icon}
-        </motion.div>
+        </div>
         <h3 className="font-bold text-base md:text-lg">{title}</h3>
       </GlassCard>
     </motion.div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Loader2, Plus, Minus, CheckCircle, Users, LayoutGrid, Receipt } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 interface GlampingWidgetProps {
   houses: any[];
@@ -213,7 +214,13 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                     {houses.map((house) => (
                         <div key={house.id} onClick={() => { setBooking({...booking, house}); setStep(2); }} className="bg-white rounded-[32px] overflow-hidden shadow-lg cursor-pointer group hover:scale-[1.02] transition-transform">
                             <div className="h-64 relative">
-                                <img src={house.cover || house.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="" />
+                                <Image 
+                                  src={house.cover || house.image} 
+                                  alt={house.name}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                  sizes="(max-width: 768px) 100vw, 50vw"
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 <div className="absolute bottom-6 left-6 right-6">
                                     <h4 className="text-white font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
@@ -234,8 +241,14 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                     <div className="h-[40vh] w-full relative bg-gray-200">
                        <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
                           {(booking.house.gallery || [booking.house.cover]).map((img: string, i: number) => (
-                            <div key={i} className="min-w-full h-full snap-center">
-                              <img src={img} className="w-full h-full object-cover" alt="" />
+                            <div key={i} className="min-w-full h-full snap-center relative">
+                              <Image 
+                                src={img} 
+                                alt={`${booking.house.name} - фото ${i + 1}`}
+                                fill
+                                className="object-cover"
+                                sizes="100vw"
+                              />
                             </div>
                           ))}
                        </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, User, Scissors, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 export default function BookingWidget({ services, masters, businessName }: any) {
   const [isOpen, setIsOpen] = useState(false);
@@ -159,8 +160,14 @@ export default function BookingWidget({ services, masters, businessName }: any) 
                           className="flex items-center gap-4 p-4 border border-gray-100 rounded-[24px] hover:border-black cursor-pointer transition-all relative"
                         >
                             {/* Аватарка */}
-                            <div className="relative">
-                                <img src={m.photo_url || ""} className="w-16 h-16 rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm" alt="" />
+                            <div className="relative w-16 h-16">
+                                <Image 
+                                  src={m.photo_url || "/placeholder-avatar.svg"} 
+                                  alt={m.name}
+                                  fill
+                                  className="rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm"
+                                  sizes="64px"
+                                />
                                 
                                 {/* ПУЛЬСИРУЮЩИЙ ИНДИКАТОР (если m.on_duty === true) */}
                                 {m.on_duty && (
