@@ -5,11 +5,9 @@ import { useState } from "react";
 import localFont from "next/font/local";
 import Image from "next/image";
 import { 
-  ArrowRight, Plus, Minus, Menu, X, CheckCircle2, 
-  Instagram, Twitter, Globe, Mail, Sparkles, Check,
-  Star, Coffee, Scissors, ShoppingBag, TrendingUp,
-  Users, Target, Zap, Award, ExternalLink, MessageCircle,
-  Clock, BarChart, Palette, Code, Wrench, Camera, Briefcase, Building
+  ArrowRight, Menu, X, Check, Star, Coffee, Scissors, TrendingUp,
+  Users, Target, Zap, Clock, BarChart, Palette, Code, Wrench, Camera, 
+  Briefcase, Building, Globe, Loader2, CheckCircle
 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import React from "react";
@@ -39,7 +37,7 @@ interface GlassCardProps {
   hoverEffect?: boolean;
 }
 
-// --- GLASSMORPHIC CARD COMPONENT - УВЕЛИЧЕНА ПРОЗРАЧНОСТЬ ---
+// --- GLASSMORPHIC CARD COMPONENT ---
 function GlassCard({ children, className = "", depth = "base", hoverEffect = false }: GlassCardProps) {
   const depthStyles: Record<DepthType, string> = {
     base: 'bg-white/[0.02] backdrop-blur-sm border border-white/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.2)]',
@@ -60,14 +58,79 @@ function GlassCard({ children, className = "", depth = "base", hoverEffect = fal
   );
 }
 
+// --- КОМПОНЕНТЫ ---
+function MobileMenuItem({ text, onClick }: { text: string, onClick: () => void }) {
+  return (
+    <button 
+      onClick={onClick} 
+      className="text-left px-6 py-4 text-white/80 hover:text-white hover:bg-white/5 rounded-2xl transition-colors text-sm font-medium"
+    >
+      {text}
+    </button>
+  );
+}
+
 export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: "", phone: "", message: "" });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const scrollTo = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
       setIsMobileMenuOpen(false);
+    }
+  };
+
+  // Маска телефона
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value.replace(/\D/g, "");
+    if (input.startsWith("7") || input.startsWith("8")) input = input.slice(1);
+    if (input.length > 10) input = input.slice(0, 10);
+    let f = "";
+    if (input.length > 0) f = "+7";
+    if (input.length > 0) f += " (" + input.slice(0, 3);
+    if (input.length >= 4) f += ") " + input.slice(3, 6);
+    if (input.length >= 7) f += "-" + input.slice(6, 8);
+    if (input.length >= 9) f += "-" + input.slice(8, 10);
+    setContactForm(prev => ({ ...prev, phone: f }));
+  };
+
+  const isPhoneValid = contactForm.phone.length === 18;
+
+  // Отправка заявки в Telegram
+  const handleSubmitContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactForm.name || !isPhoneValid) return;
+
+    setLoading(true);
+    
+    try {
+      await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: "linkalink-main",
+          service: "Заявка с главной страницы",
+          master: contactForm.message || "Сообщение не указано",
+          date: new Date().toLocaleDateString('ru-RU'),
+          time: new Date().toLocaleTimeString('ru-RU'),
+          clientName: contactForm.name,
+          clientPhone: contactForm.phone
+        }),
+      });
+
+      setSuccess(true);
+      setContactForm({ name: "", phone: "", message: "" });
+      
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (error) {
+      console.error("Ошибка отправки:", error);
+      alert("Ошибка отправки заявки. Попробуйте еще раз.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,7 +147,7 @@ export default function Home() {
     {
       title: "Глэмпинг «FOREST GLAMP»",
       category: "Отдых",
-      description: "Стильный landing с меню и доставкой",
+      description: "Стильный landing с бронированием и доставкой",
       image: "/glamp.jpg",
       link: "https://linkalink.vercel.app/forest-glamp",
       stats: { growth: "+250%", metric: "заказов в месяц" }
@@ -94,15 +157,13 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full relative text-white selection:bg-pink-500/30 overflow-x-hidden">
       
-      {/* Fixed Background Layer - Purple/Pink Glassmorphic Theme */}
+      {/* Fixed Background Layer */}
       <div className="fixed inset-0 z-0 bg-[#0f0a1e]">
-        {/* Gradient Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-pink-600/20 blur-[120px] animate-pulse-slow" />
         <div className="absolute top-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-cyan-600/20 blur-[100px]" />
         <div className="absolute bottom-[20%] left-[20%] w-[600px] h-[600px] rounded-full bg-purple-600/15 blur-[150px]" />
         <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] rounded-full bg-indigo-600/20 blur-[120px]" />
 
-        {/* Noise Texture Overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
              style={{
                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
@@ -121,7 +182,6 @@ export default function Home() {
             className="w-full max-w-4xl md:max-w-6xl"
           >
             <GlassCard depth="nav" className="rounded-full px-4 md:px-6 py-3 flex items-center justify-between">
-              {/* Логотип */}
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 md:w-10 md:h-10 relative overflow-hidden rounded-lg">
                   <Image 
@@ -130,12 +190,12 @@ export default function Home() {
                     width={40} 
                     height={40}
                     className="w-full h-full object-cover brightness-[1.2] hue-rotate-[-30deg] saturate-[1.2]"
+                    unoptimized
                   />
                 </div>
                 <span className={`${akony.className} font-bold text-xl tracking-tight text-white`}>LINKALINK</span>
               </div>
               
-              {/* Десктоп меню */}
               <div className="hidden md:flex items-center gap-6 text-sm font-medium text-white/70">
                 <button onClick={() => scrollTo('services')} className="hover:text-white transition-colors">Услуги</button>
                 <button onClick={() => scrollTo('results')} className="hover:text-white transition-colors">Результаты</button>
@@ -156,7 +216,6 @@ export default function Home() {
               </div>
             </GlassCard>
 
-            {/* Мобильное меню */}
             <AnimatePresence>
               {isMobileMenuOpen && (
                 <motion.div 
@@ -189,13 +248,6 @@ export default function Home() {
             
             {/* Left Content */}
             <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-4">
-                <Sparkles size={12} className="text-pink-400" />
-                <span className="text-xs font-medium text-pink-200 uppercase tracking-wider">
-                  Готовое решение для бизнеса
-                </span>
-              </div>
-
               <motion.h1 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -238,20 +290,6 @@ export default function Home() {
                   className="group relative px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl font-bold text-white text-sm overflow-hidden shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 transition-all"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  animate={{
-                    boxShadow: [
-                      '0 0 20px rgba(236, 72, 153, 0.3)',
-                      '0 0 40px rgba(236, 72, 153, 0.6)',
-                      '0 0 20px rgba(236, 72, 153, 0.3)',
-                    ],
-                  }}
-                  transition={{
-                    boxShadow: {
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }
-                  }}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     Обсудить проект <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -267,7 +305,7 @@ export default function Home() {
                 </motion.button>
               </motion.div>
 
-              {/* Stats */}
+              {/* Stats - БЕЗ АНИМАЦИИ СЧЕТЧИКОВ */}
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -279,10 +317,7 @@ export default function Home() {
                   { value: "2,5x", label: "Рост продаж", gradient: "from-purple-400 to-cyan-400" },
                   { value: "24/7", label: "Поддержка", gradient: "from-cyan-400 to-pink-400" }
                 ].map((item, i) => (
-                  <div
-                    key={i}
-                    className="text-center lg:text-left"
-                  >
+                  <div key={i} className="text-center lg:text-left">
                     <div className={`text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r ${item.gradient} bg-clip-text text-transparent mb-1`}>
                       {item.value}
                     </div>
@@ -294,28 +329,29 @@ export default function Home() {
               </motion.div>
             </div>
 
-            {/* Right - Enhanced Phone Mockup */}
+            {/* Right - Phone Mockup С АНИМАЦИЕЙ */}
             <div className="relative hidden lg:flex justify-center lg:justify-end mt-8 lg:mt-0">
-              <div className="relative w-full max-w-[280px] sm:max-w-xs lg:max-w-sm">
-                {/* Glow Effects */}
+              <motion.div 
+                className="relative w-full max-w-[280px] sm:max-w-xs lg:max-w-sm"
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.3 }}
+              >
                 <div className="absolute inset-0 bg-gradient-to-r from-pink-500/30 to-purple-500/30 blur-3xl scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/20 to-transparent blur-2xl" />
                 
-                {/* Phone Frame */}
                 <div className="relative z-10">
                   <GlassCard depth="floating" className="rounded-[2.5rem] lg:rounded-[3rem] p-2 lg:p-3 shadow-2xl">
                     <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden">
-                      {/* Screen Content */}
                       <div className="relative aspect-[9/19]">
                         <Image 
                           src="/mok.png"
                           alt="Phone mockup"
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                         
-
-                        {/* Overlay UI Elements */}
                         <div className="absolute inset-0 p-4 lg:p-8 flex flex-col justify-between">
                           <div className="flex justify-between items-center">
                             <div className="text-[10px] lg:text-xs text-white/80">9:41</div>
@@ -329,27 +365,8 @@ export default function Home() {
                       </div>
                     </div>
                   </GlassCard>
-                  
-                  {/* Floating Cards - скрыты на мобильных */}
-                  <div className="absolute -left-8 xl:-left-13 top-3/4 hidden lg:block">
-                    <GlassCard depth="elevated" className="px-3 py-2 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <Star className="text-yellow-400" size={14} />
-                        <span className="text-xs font-bold whitespace-nowrap">4.9 Rating</span>
-                      </div>
-                    </GlassCard>
-                  </div>
-                  
-                  <div className="absolute -right-6 xl:-right-8 bottom-2/3 hidden lg:block">
-                    <GlassCard depth="elevated" className="px-3 py-2 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="text-green-400" size={14} />
-                        <span className="text-xs font-bold whitespace-nowrap">+150% ROI</span>
-                      </div>
-                    </GlassCard>
-                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
@@ -394,7 +411,7 @@ export default function Home() {
                 description="Настройка аналитики, оптимизация для поисковых систем и отслеживание ключевых метрик"
               />
               <ServiceCard 
-                icon={<MessageCircle size={32} />}
+                icon={<Zap size={32} />}
                 title="SMM продвижение"
                 description="Ведение социальных сетей, создание контента и взаимодействие с аудиторией"
               />
@@ -407,7 +424,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- 3. РЕЗУЛЬТАТЫ --- */}
+        {/* --- 3. РЕЗУЛЬТАТЫ (БЕЗ АНИМАЦИИ СЧЕТЧИКОВ) --- */}
         <section id="results" className="py-16 md:py-24 lg:py-32 px-4 bg-gradient-to-b from-transparent via-purple-900/10 to-transparent">
           <div className="max-w-7xl mx-auto">
             <motion.div 
@@ -428,12 +445,12 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
               <ResultCard 
                 metric="20-30%"
-                description="Именно на в среднем увеличивается количество записей за первые 3 месяца"
+                description="Именно на столько в среднем увеличивается количество записей за первые 3 месяца"
                 color="from-pink-500 to-purple-500"
               />
               <ResultCard 
                 metric="до 28%"
-                description="Экономия времени персонала"
+                description="Экономия времени персонала благодаря автоматизации записи"
                 color="from-purple-500 to-cyan-500"
               />
               <ResultCard 
@@ -443,7 +460,7 @@ export default function Home() {
               />
               <ResultCard 
                 metric="+8-15%"
-                description="Повышение среднего чека за счет дополнительных услуг!!!"
+                description="Повышение среднего чека за счет дополнительных услуг"
                 color="from-green-500 to-pink-500"
               />
             </div>
@@ -481,7 +498,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- 5. РЕШЕНИЕ И УТП --- */}
+        {/* --- 5. УТП --- */}
         <section className="py-16 md:py-24 lg:py-32 px-4 bg-gradient-to-b from-transparent via-pink-900/10 to-transparent">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
@@ -492,27 +509,27 @@ export default function Home() {
                 viewport={{ once: true }}
               >
                 <h2 className={`${akony.className} text-3xl md:text-4xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-wide`}>
-                  Linkalink - <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">не просто ссылка.</span>
+                  Linkalink - <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">не просто ссылка</span>
                 </h2>
                 <p className="text-white/70 text-base md:text-lg mb-6 md:mb-8 leading-relaxed">
-                  Это персональная цифровая точка входа, которая превращает посетителей в клиентов. Я создаю и сопровождаю бизнес-страницу, которая:Я создаю и сопровождаю бизнес-страницу, которая:
+                  Это персональная цифровая точка входа, которая превращает посетителей в клиентов. Я создаю и сопровождаю бизнес-страницу, которая работает на вас 24/7.
                 </p>
 
-                <div className="space-y-4">
+                <div className="space-y-4 md:space-y-6">
                   <USPItem 
-                    icon={<Zap />}
-                    title="Увеличивает количество записей"
-                    description="Благодаря удобной системе онлайн-записи"
+                    icon={<Users size={24} />}
+                    title="Привлекает больше клиентов"
+                    description="Онлайн-запись работает круглосуточно, не теряя ни одной заявки"
                   />
                   <USPItem 
-                    icon={<Award />}
-                    title="Упрощает коммуникацию"
-                    description="Все контакты и услуги в одном месте"
+                    icon={<Clock size={24} />}
+                    title="Экономит время"
+                    description="Клиенты сами выбирают удобное время, освобождая администратора"
                   />
                   <USPItem 
-                    icon={<Users />}
-                    title="Усиливает доверие"
-                    description="Общаемся напрямую, без менеджеров"
+                    icon={<TrendingUp size={24} />}
+                    title="Увеличивает продажи"
+                    description="Интеграция с CRM и аналитикой для роста среднего чека"
                   />
                 </div>
               </motion.div>
@@ -524,98 +541,40 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="relative"
               >
-                <div className="relative aspect-square">
-                  <Image 
-                    src="/sol-3d.png"
-                    alt="Solution"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
+                <GlassCard depth="floating" className="p-6 md:p-8 lg:p-12 rounded-3xl">
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center text-pink-400">
+                        <Check size={24} />
+                      </div>
+                      <span className="text-base md:text-lg font-medium">Современный дизайн</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center text-purple-400">
+                        <Check size={24} />
+                      </div>
+                      <span className="text-base md:text-lg font-medium">Адаптивная верстка</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-green-500/20 flex items-center justify-center text-cyan-400">
+                        <Check size={24} />
+                      </div>
+                      <span className="text-base md:text-lg font-medium">Быстрая загрузка</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-green-500/20 to-pink-500/20 flex items-center justify-center text-green-400">
+                        <Check size={24} />
+                      </div>
+                      <span className="text-base md:text-lg font-medium">SEO оптимизация</span>
+                    </div>
+                  </div>
+                </GlassCard>
               </motion.div>
             </div>
           </div>
         </section>
 
-        {/* --- 6. ОТЗЫВЫ --- */}
-        <section className="py-16 md:py-24 lg:py-32 px-4">
-          <div className="max-w-7xl mx-auto">
-            <motion.div 
-              variants={fadeInUp}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-              className="text-center mb-12 md:mb-16 lg:mb-20"
-            >
-              <h2 className={`${akony.className} text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
-                Что говорят <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">клиенты</span>
-              </h2>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-              <TestimonialCard 
-                name="Алексей Петров"
-                business="Барбершоп «CUTS»"
-                text="За 2 месяца количество онлайн-записей выросло в 3 раза! Сайт просто огонь, все клиенты в восторге."
-                rating={5}
-              />
-              <TestimonialCard 
-                name="Мария Иванова"
-                business="Салон «BEAUTY»"
-                text="Профессиональный подход, быстрая работа и отличный результат. Рекомендую всем своим знакомым!"
-                rating={5}
-              />
-              <TestimonialCard 
-                name="Дмитрий Сидоров"
-                business="Кофейня «BREW»"
-                text="Стильный сайт и настроенная реклама принесли нам в 2 раза больше клиентов. Спасибо за работу!"
-                rating={5}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* --- 7. ФОРМАТ РАБОТЫ --- */}
-        <section className="py-16 md:py-24 lg:py-32 px-4 bg-gradient-to-b from-transparent via-purple-900/10 to-transparent">
-          <div className="max-w-7xl mx-auto">
-            <motion.div 
-              variants={fadeInUp}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-              className="text-center mb-12 md:mb-16 lg:mb-20"
-            >
-              <h2 className={`${akony.className} text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
-                Как мы <span className="bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">работаем</span>
-              </h2>
-            </motion.div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-              <WorkStep 
-                number="01"
-                title="Знакомство"
-                description="Обсуждаем ваш бизнес, цели и пожелания"
-              />
-              <WorkStep 
-                number="02"
-                title="Разработка"
-                description="Создаю дизайн и функционал под ключ"
-              />
-              <WorkStep 
-                number="03"
-                title="Запуск"
-                description="Настраиваю рекламу и запускаем сайт"
-              />
-              <WorkStep 
-                number="04"
-                title="Поддержка"
-                description="Анализируем результаты и оптимизируем"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* --- 8. КЕЙСЫ --- */}
+        {/* --- 6. КЕЙСЫ --- */}
         <section id="cases" className="py-16 md:py-24 lg:py-32 px-4">
           <div className="max-w-7xl mx-auto">
             <motion.div 
@@ -626,23 +585,23 @@ export default function Home() {
               className="text-center mb-12 md:mb-16 lg:mb-20"
             >
               <h2 className={`${akony.className} text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
-                Мои <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">кейсы</span>
+                Мои <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">работы</span>
               </h2>
               <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto px-4">
-                Реальные проекты с впечатляющими результатами
+                Примеры реализованных проектов для локальных бизнесов
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-              {cases.map((caseItem, idx) => (
-                <CaseCard key={idx} {...caseItem} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              {cases.map((caseItem, index) => (
+                <CaseCard key={index} {...caseItem} />
               ))}
             </div>
           </div>
         </section>
 
-        {/* --- 9. ТАРИФЫ --- */}
-        <section id="pricing" className="py-16 md:py-24 lg:py-32 px-4 bg-gradient-to-b from-transparent via-pink-900/10 to-transparent">
+        {/* --- 7. ТАРИФЫ --- */}
+        <section id="pricing" className="py-16 md:py-24 lg:py-32 px-4 bg-gradient-to-b from-transparent via-purple-900/10 to-transparent">
           <div className="max-w-7xl mx-auto">
             <motion.div 
               variants={fadeInUp}
@@ -652,55 +611,52 @@ export default function Home() {
               className="text-center mb-12 md:mb-16 lg:mb-20"
             >
               <h2 className={`${akony.className} text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
-                <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">Тарифы</span>
+                Выберите свой <span className="bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">тариф</span>
               </h2>
               <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto px-4">
-                Выберите подходящий пакет услуг для вашего бизнеса
+                Прозрачные цены без скрытых платежей
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               <PricingCard 
-                title="Start"
-                price="3 900 ₽/мес"
-                setupPrice="5 000₽"
+                title="Старт"
+                price="10 000₽/мес"
+                setupPrice="15 000₽"
                 features={[
-                  "Создание персональной бизнес-страницы",
-                  "Форма заявки",
-                  "Кнопки соц. сетей + звонок",
-                  "Базовая аналитика",
-                  "Блок услуг и прайс-лист",
-                  "Техническая поддержка"
+                  "Одностраничный сайт",
+                  "Базовая онлайн-запись",
+                  "Адаптивный дизайн",
+                  "Подключение домена",
+                  "Техподдержка 5/2"
                 ]}
                 highlighted={false}
               />
               <PricingCard 
-                title="Business"
-                price="4 900 ₽/мес"
-                setupPrice="6 000₽"
+                title="Бизнес"
+                price="20 000₽/мес"
+                setupPrice="30 000₽"
                 features={[
-                  "Всё из тарифа «Start»",
-                  "Категории услуг",
-                  "Динамические цены",
-                  "Дополнительные продажи",
-                  "Автоматические уведомления клиентам",
-                  "Блок акций и спецпредложений",
-                  "Приоритетная поддержка"
+                  "Многостраничный сайт",
+                  "Расширенная система записи",
+                  "CRM интеграция",
+                  "Telegram-уведомления",
+                  "Аналитика и отчеты",
+                  "Техподдержка 24/7"
                 ]}
                 highlighted={true}
               />
               <PricingCard 
-                title="Premium"
-                price="7 900 ₽/мес"
-                setupPrice="7 000₽"
+                title="Премиум"
+                price="35 000₽/мес"
+                setupPrice="50 000₽"
                 features={[
-                  "Всё из тарифа «Business»",
-                  "Неограниченное количество услуг",
-                  "Подключение нескольких сотрудников",
-                  "Интеграции с сервисами",
-                  "Неограничные правки и доработки",
-                  "Персональный менеджер",
-                  "Аналитика и отчеты"
+                  "Индивидуальный дизайн",
+                  "Полная автоматизация",
+                  "Интеграция с соцсетями",
+                  "SEO продвижение",
+                  "Email-рассылки",
+                  "Персональный менеджер"
                 ]}
                 highlighted={false}
               />
@@ -708,129 +664,100 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- 10. ЗАЯВКА --- */}
+        {/* --- 8. ФОРМА КОНТАКТА --- */}
         <section id="contact" className="py-16 md:py-24 lg:py-32 px-4">
           <div className="max-w-3xl mx-auto">
-            <GlassCard depth="elevated" className="rounded-3xl p-6 md:p-10 lg:p-12">
-              <motion.div 
-                variants={fadeInUp}
-                initial="initial"
-                whileInView="whileInView"
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <h2 className={`${akony.className} text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
-                  Готовы <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">начать?</span>
-                </h2>
-                <p className="text-white/70 mb-8 md:mb-12 text-base md:text-lg">
-                  Оставьте заявку, и я свяжусь с вами в течение 1 часа
-                </p>
-                
-                <form className="flex flex-col gap-4 md:gap-6" onSubmit={(e) => e.preventDefault()}>
-                  <GlassCard depth="base" className="rounded-2xl overflow-hidden">
-                    <input
-                      type="text"
-                      placeholder="Ваше имя"
-                      className="w-full bg-transparent border-none px-4 md:px-6 py-4 md:py-5 text-white placeholder-white/40 focus:ring-0 outline-none text-base md:text-lg"
-                    />
-                  </GlassCard>
-                  
-                  <GlassCard depth="base" className="rounded-2xl overflow-hidden">
-                    <input
-                      type="tel"
-                      placeholder="Telegram / Телефон"
-                      className="w-full bg-transparent border-none px-4 md:px-6 py-4 md:py-5 text-white placeholder-white/40 focus:ring-0 outline-none text-base md:text-lg"
-                    />
-                  </GlassCard>
+            <motion.div 
+              variants={fadeInUp}
+              initial="initial"
+              whileInView="whileInView"
+              viewport={{ once: true }}
+              className="text-center mb-12 md:mb-16"
+            >
+              <h2 className={`${akony.className} text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 uppercase tracking-tighter`}>
+                Оставьте <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">заявку</span>
+              </h2>
+              <p className="text-white/60 text-base md:text-lg">
+                Свяжусь с вами в течение часа и обсудим ваш проект
+              </p>
+            </motion.div>
 
-                  <GlassCard depth="base" className="rounded-2xl overflow-hidden">
-                    <textarea
-                      placeholder="Расскажите о вашем проекте"
-                      rows={4}
-                      className="w-full bg-transparent border-none px-4 md:px-6 py-4 md:py-5 text-white placeholder-white/40 focus:ring-0 outline-none text-base md:text-lg resize-none"
-                    />
-                  </GlassCard>
-
-                  <button className="mt-2 md:mt-4 px-6 md:px-8 py-4 md:py-5 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-base md:text-lg hover:shadow-lg hover:shadow-pink-500/30 transition-all flex items-center justify-center gap-2">
-                    Отправить заявку <ArrowRight size={18} className="md:w-5 md:h-5" />
-                  </button>
-                </form>
-              </motion.div>
-            </GlassCard>
+            <motion.div
+              variants={fadeInUp}
+              initial="initial"
+              whileInView="whileInView"
+              viewport={{ once: true }}
+            >
+              <GlassCard depth="elevated" className="p-6 md:p-8 lg:p-12 rounded-3xl">
+                {success ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <CheckCircle size={80} className="text-green-500 mb-6" />
+                    <h3 className="text-2xl md:text-3xl font-bold mb-3">Заявка отправлена!</h3>
+                    <p className="text-white/60 text-sm md:text-base">
+                      Спасибо за обращение. Свяжусь с вами в ближайшее время.
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitContact} className="space-y-4 md:space-y-6">
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Ваше имя"
+                        value={contactForm.name}
+                        onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="tel"
+                        placeholder="+7 (___) ___-__-__"
+                        value={contactForm.phone}
+                        onChange={handlePhoneChange}
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <textarea
+                        placeholder="Расскажите о вашем проекте (необязательно)"
+                        value={contactForm.message}
+                        onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                        rows={4}
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors resize-none text-sm md:text-base"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!contactForm.name || !isPhoneValid || loading}
+                      className="w-full py-3 md:py-4 rounded-xl md:rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-sm md:text-base uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-pink-500/30 transition-all flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="animate-spin" size={20} />
+                          Отправка...
+                        </>
+                      ) : (
+                        'Отправить заявку'
+                      )}
+                    </button>
+                  </form>
+                )}
+              </GlassCard>
+            </motion.div>
           </div>
         </section>
 
         {/* --- FOOTER --- */}
-        <footer className="border-t border-white/5 bg-black/20 backdrop-blur-lg pt-12 md:pt-16 pb-6 md:pb-8 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10 mb-12 md:mb-16">
-              <div className="col-span-2 md:col-span-1">
-                <div className="flex items-center gap-2 mb-4 md:mb-6">
-                  <div className="w-6 h-6 md:w-8 md:h-8 relative overflow-hidden rounded-lg">
-                    <Image 
-                      src="/logo.jpg" 
-                      alt="Logo" 
-                      width={32} 
-                      height={32}
-                      className="w-full h-full object-cover brightness-[1.2] hue-rotate-[-30deg] saturate-[1.2]"
-                    />
-                  </div>
-                  <span className={`${akony.className} font-bold text-lg md:text-xl tracking-tight text-white`}>LINKALINK</span>
-                </div>
-                <p className="text-white/40 text-xs md:text-sm">
-                  Создаю цифровые решения для локального бизнеса
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold mb-4 md:mb-6 text-sm md:text-base">Услуги</h4>
-                <ul className="space-y-3 md:space-y-4 text-xs md:text-sm text-white/60">
-                  <li><button onClick={() => scrollTo('services')} className="hover:text-white transition-colors">Разработка сайтов</button></li>
-                  <li><button onClick={() => scrollTo('services')} className="hover:text-white transition-colors">Настройка рекламы</button></li>
-                  <li><button onClick={() => scrollTo('services')} className="hover:text-white transition-colors">SMM продвижение</button></li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-bold mb-4 md:mb-6 text-sm md:text-base">Информация</h4>
-                <ul className="space-y-3 md:space-y-4 text-xs md:text-sm text-white/60">
-                  <li><button onClick={() => scrollTo('cases')} className="hover:text-white transition-colors">Кейсы</button></li>
-                  <li><button onClick={() => scrollTo('pricing')} className="hover:text-white transition-colors">Тарифы</button></li>
-                  <li><button onClick={() => scrollTo('contact')} className="hover:text-white transition-colors">Контакты</button></li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-bold mb-4 md:mb-6 text-sm md:text-base">Контакты</h4>
-                <ul className="space-y-3 md:space-y-4 text-xs md:text-sm text-white/60">
-                  <li className="flex items-center gap-2">
-                    <Mail size={14} className="md:w-4 md:h-4" />
-                    <a href="mailto:hello@linkalink.com" className="hover:text-white transition-colors">hello@linkalink.com</a>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Instagram size={14} className="md:w-4 md:h-4" />
-                    <a href="#" className="hover:text-white transition-colors">@linkalink</a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="border-t border-white/5 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-white/30 text-xs md:text-sm text-center md:text-left">© 2025 Linkalink. Все права защищены.</p>
-              <div className="flex gap-4 md:gap-6">
-                <a href="#" className="text-white/40 hover:text-white transition-colors">
-                  <Instagram size={18} className="md:w-5 md:h-5" />
-                </a>
-                <a href="#" className="text-white/40 hover:text-white transition-colors">
-                  <Twitter size={18} className="md:w-5 md:h-5" />
-                </a>
-                <a href="#" className="text-white/40 hover:text-white transition-colors">
-                  <Globe size={18} className="md:w-5 md:h-5" />
-                </a>
-              </div>
-            </div>
+        <footer className="py-8 md:py-12 px-4 border-t border-white/5">
+          <div className="max-w-7xl mx-auto text-center">
+            <p className="text-white/40 text-xs md:text-sm">
+              © 2024 Linkalink. Все права защищены.
+            </p>
           </div>
         </footer>
+
       </div>
     </div>
   );
@@ -838,37 +765,24 @@ export default function Home() {
 
 // --- ВСПОМОГАТЕЛЬНЫЕ КОМПОНЕНТЫ ---
 
-function MobileMenuItem({ onClick, text }: { onClick: () => void, text: string }) {
-  return (
-    <button 
-      onClick={onClick} 
-      className="w-full py-3 px-4 text-left text-white/70 hover:bg-white/10 hover:text-white rounded-xl transition-colors font-medium"
-    >
-      {text}
-    </button>
-  );
-}
-
 function ServiceCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
     <motion.div
       variants={fadeInUp}
       initial="initial"
       whileInView="whileInView"
-      whileHover={{ scale: 1.03, rotate: 1 }}
       viewport={{ once: true }}
     >
       <GlassCard depth="elevated" hoverEffect className="p-6 md:p-8 rounded-2xl md:rounded-3xl h-full">
-        <div className="text-pink-400 mb-3 md:mb-4">
+        <div className="text-purple-400 mb-4">
           {icon}
         </div>
-        <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 uppercase tracking-tight">{title}</h3>
+        <h3 className="font-bold text-lg md:text-xl mb-3">{title}</h3>
         <p className="text-white/60 text-sm leading-relaxed">{description}</p>
       </GlassCard>
     </motion.div>
   );
 }
-
 
 function ResultCard({ metric, description, color }: { metric: string, description: string, color: string }) {
   return (
@@ -876,13 +790,10 @@ function ResultCard({ metric, description, color }: { metric: string, descriptio
       variants={fadeInUp}
       initial="initial"
       whileInView="whileInView"
-      whileHover={{ scale: 1.05, rotate: 2 }}
       viewport={{ once: true }}
     >
-      <GlassCard depth="elevated" className="p-6 md:p-8 rounded-2xl md:rounded-3xl text-center h-full">
-        <div
-          className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r ${color} bg-clip-text text-transparent`}
-        >
+      <GlassCard depth="elevated" className="p-6 md:p-8 rounded-2xl md:rounded-3xl text-center h-full flex flex-col justify-center">
+        <div className={`text-4xl md:text-5xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent mb-3 md:mb-4`}>
           {metric}
         </div>
         <p className="text-white/60 text-sm leading-relaxed">{description}</p>
@@ -891,17 +802,15 @@ function ResultCard({ metric, description, color }: { metric: string, descriptio
   );
 }
 
-
 function ClientType({ icon, title }: { icon: React.ReactNode, title: string }) {
   return (
     <motion.div
       variants={fadeInUp}
       initial="initial"
       whileInView="whileInView"
-      whileHover={{ scale: 1.1 }}
       viewport={{ once: true }}
     >
-      <GlassCard depth="elevated" hoverEffect className="p-6 md:p-8 rounded-2xl md:rounded-3xl text-center h-full flex flex-col items-center justify-center gap-3 md:gap-4">
+      <GlassCard depth="base" hoverEffect className="p-6 md:p-8 rounded-2xl md:rounded-3xl flex flex-col items-center text-center gap-3 md:gap-4 h-full">
         <div className="text-purple-400">
           {icon}
         </div>
@@ -910,7 +819,6 @@ function ClientType({ icon, title }: { icon: React.ReactNode, title: string }) {
     </motion.div>
   );
 }
-
 
 function USPItem({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
@@ -926,63 +834,12 @@ function USPItem({ icon, title, description }: { icon: React.ReactNode, title: s
   );
 }
 
-function TestimonialCard({ name, business, text, rating }: { name: string, business: string, text: string, rating: number }) {
-  return (
-    <motion.div
-      variants={fadeInUp}
-      initial="initial"
-      whileInView="whileInView"
-      whileHover={{ y: -10, scale: 1.02 }}
-      viewport={{ once: true }}
-    >
-      <GlassCard depth="elevated" className="p-6 md:p-8 rounded-2xl md:rounded-3xl h-full flex flex-col">
-        <div className="flex gap-1 mb-3 md:mb-4">
-          {[...Array(rating)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
-            >
-              <Star size={14} className="text-yellow-400 fill-yellow-400 md:w-4 md:h-4" />
-            </motion.div>
-          ))}
-        </div>
-        <p className="text-white/80 mb-4 md:mb-6 flex-grow leading-relaxed text-sm md:text-base">{text}</p>
-        <div>
-          <div className="font-bold text-sm md:text-base">{name}</div>
-          <div className="text-white/50 text-xs md:text-sm">{business}</div>
-        </div>
-      </GlassCard>
-    </motion.div>
-  );
-}
-
-
-function WorkStep({ number, title, description }: { number: string, title: string, description: string }) {
-  return (
-    <motion.div
-      variants={fadeInUp}
-      initial="initial"
-      whileInView="whileInView"
-      viewport={{ once: true }}
-      className="text-center"
-    >
-      <div className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent mb-3 md:mb-4">
-        {number}
-      </div>
-      <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 uppercase tracking-tight">{title}</h3>
-      <p className="text-white/60 text-sm leading-relaxed">{description}</p>
-    </motion.div>
-  );
-}
-
-function CaseCard({ title, category, description, image, link, stats }: { 
+function CaseCard({ title, category, description, image, link }: { 
   title: string, 
   category: string, 
   description: string, 
   image: string, 
-  link: string,
-  stats: { growth: string, metric: string }
+  link: string
 }) {
   return (
     <motion.div
@@ -1005,6 +862,7 @@ function CaseCard({ title, category, description, image, link, stats }: {
                 alt={title}
                 fill
                 className="object-cover"
+                unoptimized
               />
             </motion.div>
 
@@ -1022,7 +880,6 @@ function CaseCard({ title, category, description, image, link, stats }: {
   );
 }
 
-
 function PricingCard({ title, price, setupPrice, features, highlighted }: { 
   title: string, 
   price: string,
@@ -1035,25 +892,19 @@ function PricingCard({ title, price, setupPrice, features, highlighted }: {
       variants={fadeInUp}
       initial="initial"
       whileInView="whileInView"
-      whileHover={highlighted
-      ? { scale: 1.06, y: -10 }
-      : { scale: 1.03, y: -6 }
-  }
-  transition={{ type: "spring", stiffness: 200 }}
+      whileHover={highlighted ? { scale: 1.06, y: -10 } : { scale: 1.03, y: -6 }}
+      transition={{ type: "spring", stiffness: 200 }}
       viewport={{ once: true }}
     >
       <GlassCard 
-        depth={highlighted ? "floating" : "elevated"} hoverEffect
+        depth={highlighted ? "floating" : "elevated"} 
+        hoverEffect
         className={`p-6 md:p-8 rounded-2xl md:rounded-3xl h-full flex flex-col ${highlighted ? 'border-2 border-pink-500/50' : ''}`}
       >
         {highlighted && (
-          <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold uppercase tracking-wider text-center"
-          >
+          <div className="mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold uppercase tracking-wider text-center">
             Популярный
-          </motion.div>
+          </div>
         )}
         
         <h3 className="text-xl md:text-2xl font-bold mb-2 uppercase tracking-tight">{title}</h3>

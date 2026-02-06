@@ -9,7 +9,7 @@ interface GlampingWidgetProps {
   houses: any[];
   addons: any[];
   businessName: string;
-  managerTelegram?: string; // Ник менеджера для оплаты
+  managerTelegram?: string;
 }
 
 export default function GlampingWidget({ houses, addons, businessName, managerTelegram }: GlampingWidgetProps) {
@@ -17,7 +17,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Сброс данных
   const initialBooking = {
     house: null,
     startDate: null,
@@ -29,11 +28,9 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
   };
   const [booking, setBooking] = useState<any>(initialBooking);
 
-  // Календарь
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
-  // Полный сброс при закрытии или отмене
   const reset = () => {
     setIsOpen(false);
     setStep(1);
@@ -41,21 +38,18 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
   };
 
   const back = () => {
-    // Если уходим с шага выбора дат, сбрасываем даты
     if (step === 3) setBooking((prev: any) => ({ ...prev, startDate: null, endDate: null }));
     setStep(step - 1);
   };
 
-  // --- ЗАГРУЗКА ЗАНЯТЫХ ДАТ (ЛОГИКА) ---
   useEffect(() => {
     if (booking.house) {
       const fetchBookings = async () => {
-        // Запрашиваем даты
         const { data, error } = await supabase
           .from('bookings')
           .select('booking_date')
           .ilike('service_name', `%${booking.house.name}%`)
-          .neq('status', 'cancelled'); // <--- ВОТ ТУТ ПРАВИЛЬНОЕ МЕСТО
+          .neq('status', 'cancelled');
 
         if (error) {
           console.error("Ошибка загрузки дат:", error);
@@ -70,14 +64,13 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
             const [startStr, endStr] = row.booking_date.split(" — ");
             
             const parseDate = (s: string) => {
-                const parts = s.split("."); // s = "01.02.2024"
+                const parts = s.split(".");
                 return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
             };
 
             const start = parseDate(startStr);
             const end = parseDate(endStr);
 
-            // Блокируем все дни в диапазоне
             for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
                 busy.push(d.toISOString().split('T')[0]);
             }
@@ -90,7 +83,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
     }
   }, [booking.house]);
 
-  // --- МАСКА ТЕЛЕФОНА ---
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let input = e.target.value.replace(/\D/g, "");
     if (input.startsWith("7") || input.startsWith("8")) input = input.slice(1);
@@ -106,7 +98,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
 
   const isPhoneValid = booking.clientPhone.length === 18;
 
-  // --- КАЛЕНДАРЬ UI ---
   const { days, offset, year, month } = (() => {
     const y = currentDate.getFullYear(), m = currentDate.getMonth();
     const d = new Date(y, m + 1, 0).getDate();
@@ -139,7 +130,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
     }
   };
 
-  // --- РАСЧЕТЫ ---
   const calculateTotal = () => {
     if (!booking.house || !booking.startDate || !booking.endDate) return 0;
     const nights = Math.max(1, Math.ceil((booking.endDate.getTime() - booking.startDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -149,9 +139,8 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
   };
 
   const total = calculateTotal();
-  const deposit = Math.round(total * 0.3); // 30% предоплата
+  const deposit = Math.round(total * 0.3);
 
-  // --- ОТПРАВКА БРОНИ И ПЕРЕХОД В ТГ ---
   const handleBookingRequest = async () => {
     setLoading(true);
     const formatDate = (d: Date) => d.toLocaleDateString('ru-RU');
@@ -160,7 +149,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
         .filter(([_, c]: any) => c > 0)
         .map(([n, c]) => `${n} x${c}`).join(", ");
 
-    // 1. Сохраняем в базу со статусом pending (красный)
     await fetch("/api/telegram", {
       method: "POST",
       body: JSON.stringify({
@@ -176,13 +164,11 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
 
     setLoading(false);
     
-    // 2. Перекидываем в Телеграм к менеджеру
-    // Если менеджера нет в базе, ставим дефолтного (тебя)
     const targetTg = managerTelegram || "bazzlayter00"; 
     const message = `Здравствуйте! Я хочу оплатить бронь: ${booking.house.name}, ${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}. Сумма: ${total}₽`;
     window.open(`https://t.me/${targetTg}?text=${encodeURIComponent(message)}`, '_blank');
     
-    setStep(6); // Показываем успех
+    setStep(6);
   };
 
   if (!isOpen) {
@@ -198,7 +184,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
       <div className="bg-white w-full max-w-[480px] h-full sm:h-[90vh] sm:rounded-[40px] relative text-slate-900 shadow-2xl flex flex-col overflow-hidden">
         
-        {/* Хедер */}
         <div className="p-6 flex items-center justify-between bg-white z-10 border-b border-gray-100">
             {step > 1 && step < 6 && <button onClick={back} className="p-2 -ml-2 rounded-full hover:bg-gray-100"><ChevronLeft /></button>}
             <span className="font-bold uppercase tracking-widest text-xs opacity-50">Бронирование</span>
@@ -207,7 +192,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
 
         <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50 pb-20">
             
-            {/* ШАГ 1: СПИСОК ДОМОВ */}
             {step === 1 && (
                 <div className="p-6 space-y-6">
                     <h3 className="text-3xl font-black uppercase italic tracking-tighter">Наши дома</h3>
@@ -220,12 +204,12 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                                   fill
                                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                                   sizes="(max-width: 768px) 100vw, 50vw"
+                                  unoptimized
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 <div className="absolute bottom-6 left-6 right-6">
                                     <h4 className="text-white font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
                                 </div>
-                                {/* ЦЕНА ЧУТЬ ВЫШЕ */}
                                 <div className="absolute bottom-8 right-6 bg-white/90 backdrop-blur px-3 py-1 rounded-lg font-bold text-xs">
                                     {house.price} ₽ / ночь
                                 </div>
@@ -235,7 +219,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                 </div>
             )}
 
-            {/* ШАГ 2: ПОДРОБНО */}
             {step === 2 && booking.house && (
                 <div className="flex flex-col h-full bg-white">
                     <div className="h-[40vh] w-full relative bg-gray-200">
@@ -248,6 +231,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                                 fill
                                 className="object-cover"
                                 sizes="100vw"
+                                unoptimized
                               />
                             </div>
                           ))}
@@ -263,7 +247,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                 </div>
             )}
 
-            {/* ШАГ 3: КАЛЕНДАРЬ */}
             {step === 3 && (
                 <div className="flex flex-col h-full bg-white p-6">
                     <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-6">Даты</h3>
@@ -291,7 +274,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                 </div>
             )}
 
-            {/* ШАГ 4: ДОПЫ И КОНТАКТЫ */}
             {step === 4 && (
                 <div className="p-6 h-full flex flex-col">
                     <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-4">Детали</h3>
@@ -315,7 +297,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                 </div>
             )}
 
-            {/* ШАГ 5: ЧЕК И ОПЛАТА */}
             {step === 5 && (
                 <div className="flex flex-col h-full p-6 bg-gray-50">
                     <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-6">Итого</h3>
@@ -358,7 +339,6 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                 </div>
             )}
 
-            {/* ШАГ 6: УСПЕХ */}
             {step === 6 && (
                 <div className="flex flex-col items-center justify-center h-full text-center p-6">
                     <CheckCircle size={80} className="text-green-500 mb-6 animate-in zoom-in" />
