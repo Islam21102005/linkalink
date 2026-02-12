@@ -14,7 +14,7 @@ const supabase = createClient(
 // Добавьте сюда все ваши бизнесы с их telegram chat_id
 const BUSINESS_CHAT_IDS: Record<string, string> = {
   'elegant-barbershop': process.env.TELEGRAM_CHAT_ID_BARBERSHOP || process.env.TELEGRAM_CHAT_ID!,
-  'forest-glamp': process.env.TELEGRAM_CHAT_ID_GLAMP || process.env.TELEGRAM_CHAT_ID!,
+  'forest-glamp': process.env.TELEGRAM_CHAT_ID_GLAMP!,
   'linkalink-main': process.env.TELEGRAM_CHAT_ID!, // Заявки с главной страницы
 };
 

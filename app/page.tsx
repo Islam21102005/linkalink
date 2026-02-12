@@ -141,7 +141,7 @@ export default function Home() {
       category: "Барбершоп",
       description: "Современный сайт с онлайн-записью и галереей работ",
       image: "/barb.jpg",
-      link: "https://linkalink.vercel.app/elegant-barbershop",  
+      link: "/elegant-barbershop",  
       stats: { growth: "+180%", metric: "записей онлайн" }
     },
     {
@@ -149,7 +149,7 @@ export default function Home() {
       category: "Отдых",
       description: "Стильный landing с бронированием и доставкой",
       image: "/glamp.jpg",
-      link: "https://linkalink.vercel.app/forest-glamp",
+      link: "/forest-glamp",
       stats: { growth: "+250%", metric: "заказов в месяц" }
     }
   ];
@@ -874,7 +874,7 @@ function CaseCard({ title, category, description, image, link }: {
       whileHover={{ y: -10, scale: 1.02 }}
       viewport={{ once: true }}
     >
-      <a href={link} target="_blank" rel="noopener noreferrer" className="block group">
+      <Link href={link} className="block group">
         <GlassCard depth="elevated" className="rounded-2xl md:rounded-3xl overflow-hidden h-full">
           <div className="relative aspect-[4/3] overflow-hidden">
             <motion.div
@@ -900,7 +900,7 @@ function CaseCard({ title, category, description, image, link }: {
             <p className="text-white/60 text-xs md:text-sm leading-relaxed">{description}</p>
           </div>
         </GlassCard>
-      </a>
+      </Link>
     </motion.div>
   );
 }

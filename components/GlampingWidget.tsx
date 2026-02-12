@@ -173,7 +173,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
     setLoading(false);
     
     const targetTg = managerTelegram || "bazzlayter00"; 
-    const message = `Здравствуйте! Я хочу оплатить бронь: ${booking.house.name}, ${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}. Сумма: ${total}₽`;
+    const message = `Здравствуйте! Я хочу оплатить бронь: ${booking.house.name}, ${formatDate(booking.startDate)} - ${formatDate(booking.endDate)}. Сумма: ${total}₽. Предоплата: ${deposit}₽. Меня зовут ${booking.clientName}, мой телефон: ${booking.clientPhone}. Спасибо!`;
     window.open(`https://t.me/${targetTg}?text=${encodeURIComponent(message)}`, '_blank');
     
     setStep(6);

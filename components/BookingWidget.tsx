@@ -1,120 +1,227 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Calendar, User, Scissors, CheckCircle, Loader2 } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import {
+  X,
+  Calendar,
+  User,
+  Scissors,
+  CheckCircle,
+  Loader2
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export default function BookingWidget({ services, masters, businessName }: any) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+/* ================= TYPES ================= */
 
-  const emptyForm = { service: "", price: "", master: "", date: "", time: "", name: "", phone: "" };
-  const [formData, setFormData] = useState(emptyForm);
+interface Service {
+  id?: string;
+  name: string;
+  price: string;
+  category?: string;
+}
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let input = e.target.value.replace(/\D/g, "");
-    
-    if (input.startsWith("7") || input.startsWith("8")) {
-      input = input.slice(1);
-    }
-    
-    if (input.length > 10) input = input.slice(0, 10);
+interface Master {
+  id?: string;
+  name: string;
+  photo_url?: string;
+  specialty?: string;
+  on_duty?: boolean;
+}
 
-    let formatted = "";
-    if (input.length > 0) formatted = "+7";
-    if (input.length > 0) formatted += " (" + input.slice(0, 3);
-    if (input.length >= 4) formatted += ") " + input.slice(3, 6);
-    if (input.length >= 7) formatted += "-" + input.slice(6, 8);
-    if (input.length >= 9) formatted += "-" + input.slice(8, 10);
+interface BookingWidgetProps {
+  services: Service[];
+  masters: Master[];
+  businessName: string;
+}
 
-    setFormData(prev => ({ ...prev, phone: formatted }));
+interface FormData {
+  service: string;
+  price: string;
+  master: string;
+  date: string;
+  time: string;
+  name: string;
+  phone: string;
+}
+
+/* ================= COMPONENT ================= */
+
+export default function BookingWidget({
+  services,
+  masters,
+  businessName
+}: BookingWidgetProps) {
+  /* ================= STATE ================= */
+
+  const emptyForm: FormData = {
+    service: "",
+    price: "",
+    master: "",
+    date: "",
+    time: "",
+    name: "",
+    phone: ""
   };
 
-  const closeAndReset = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<number>(1);
+  const [loading, setLoading] = useState(false);
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+
+  /* ================= MEMO ================= */
+
+  const groupedServices = useMemo(() => {
+    return services.reduce<Record<string, Service[]>>((acc, service) => {
+      const category = service.category || "Общие услуги";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(service);
+      return acc;
+    }, {});
+  }, [services]);
+
+  const dates = useMemo(() => {
+    const result = [];
+    const today = new Date();
+
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+
+      result.push({
+        label: d.toLocaleDateString("ru-RU", {
+          weekday: "short",
+          day: "numeric"
+        }),
+        value: d.toISOString().split("T")[0]
+      });
+    }
+
+    return result;
+  }, []);
+
+  const timeSlots = useMemo(() => {
+    const slots: string[] = [];
+    for (let h = 10; h < 20; h++) {
+      slots.push(`${h}:00`);
+      slots.push(`${h}:30`);
+    }
+    slots.push("20:00");
+    return slots;
+  }, []);
+
+  const isPhoneValid = formData.phone.length === 18;
+
+  /* ================= HANDLERS ================= */
+
+  const handlePhoneChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      let input = e.target.value.replace(/\D/g, "");
+
+      if (input.startsWith("7") || input.startsWith("8")) {
+        input = input.slice(1);
+      }
+
+      if (input.length > 10) input = input.slice(0, 10);
+
+      let formatted = "";
+      if (input.length > 0) formatted = "+7";
+      if (input.length > 0) formatted += " (" + input.slice(0, 3);
+      if (input.length >= 4) formatted += ") " + input.slice(3, 6);
+      if (input.length >= 7) formatted += "-" + input.slice(6, 8);
+      if (input.length >= 9) formatted += "-" + input.slice(8, 10);
+
+      setFormData(prev => ({ ...prev, phone: formatted }));
+    },
+    []
+  );
+
+  const handleDateSelect = useCallback(
+    async (date: string) => {
+      if (!formData.master) return;
+
+      setFormData(prev => ({ ...prev, date, time: "" }));
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("time")
+        .eq("booking_date", date)
+        .eq("master_name", formData.master);
+
+      if (error) {
+        console.error("Ошибка загрузки времени:", error);
+        return;
+      }
+
+      setBookedTimes(data ? data.map(b => b.time) : []);
+    },
+    [formData.master]
+  );
+
+  const handleBook = useCallback(async () => {
+    setLoading(true);
+
+    const payload = {
+      businessSlug: businessName,
+      service: `${formData.service} (${formData.price})`,
+      master: formData.master,
+      date: formData.date,
+      time: formData.time,
+      clientName: formData.name,
+      clientPhone: formData.phone
+    };
+
+    try {
+      await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      setStep(4);
+    } catch (error) {
+      console.error("Ошибка отправки:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [formData, businessName]);
+
+  const closeAndReset = useCallback(() => {
     setIsOpen(false);
     setFormData(emptyForm);
     setStep(1);
-  };
-
-  const groupedServices = services.reduce((acc: any, s: any) => {
-    const cat = s.category || "Общие услуги";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(s);
-    return acc;
-  }, {});
-
-  const [dates, setDates] = useState<{label: string, value: string}[]>([]);
-  useEffect(() => {
-    const arr = [];
-    const today = new Date();
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today); d.setDate(today.getDate() + i);
-      arr.push({ label: d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' }), value: d.toISOString().split('T')[0] });
-    }
-    setDates(arr);
+    setBookedTimes([]);
   }, []);
 
-  const timeSlots = [];
-  for (let h = 10; h < 20; h++) { timeSlots.push(`${h}:00`); timeSlots.push(`${h}:30`); }
-  timeSlots.push("20:00");
-
-  const handleDateSelect = async (d: string) => {
-    setFormData(p => ({...p, date: d, time: ""}));
-    const { data } = await supabase.from('bookings').select('time').eq('booking_date', d).eq('master_name', formData.master);
-    setBookedTimes(data ? data.map(b => b.time) : []);
-  };
-
-  const handleBook = async () => {
-    setLoading(true);
-    
-    const payload = {
-        businessSlug: businessName, // Передаем slug бизнеса
-        service: `${formData.service} (${formData.price})`,
-        master: formData.master,
-        date: formData.date,
-        time: formData.time,
-        clientName: formData.name,
-        clientPhone: formData.phone
-    };
-
-    console.log("💈 Отправка записи барбершопа:", payload);
-
-    try {
-      await fetch("/api/telegram", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload) 
-      });
-      
-      console.log("✅ Запись барбершопа отправлена");
-    } catch (error) {
-      console.error("❌ Ошибка отправки записи барбершопа:", error);
-    }
-    
-    setLoading(false);
-    setStep(4);
-  };
-
-  const openWidget = (s: number) => {
-    setIsOpen(true);
-    setStep(s === 3 && (!formData.service || !formData.master) ? 1 : s);
-  };
-
-  const isPhoneValid = formData.phone.length === 18;
+  /* ================= UI ================= */
 
   if (!isOpen) {
     return (
       <div className="space-y-4 w-full">
         {[
-            { id: 1, t: formData.service || "Выбрать услугу", i: Scissors },
-            { id: 2, t: formData.master || "Выбрать мастера", i: User },
-            { id: 3, t: formData.date && formData.time ? `${formData.date} ${formData.time}` : "Выбрать время", i: Calendar }
-        ].map((btn) => (
-          <button key={btn.id} onClick={() => openWidget(btn.id)} className="w-full h-16 bg-white text-black rounded-2xl shadow-xl flex items-center justify-center relative font-bold hover:bg-gray-50 transition-all active:scale-[0.98]">
-            <span className="text-lg tracking-[0.2em] uppercase truncate px-12">{btn.t}</span>
-            <btn.i size={20} className="absolute right-6 opacity-40" />
+          { id: 1, text: formData.service || "Выбрать услугу", icon: Scissors },
+          { id: 2, text: formData.master || "Выбрать мастера", icon: User },
+          {
+            id: 3,
+            text:
+              formData.date && formData.time
+                ? `${formData.date} ${formData.time}`
+                : "Выбрать время",
+            icon: Calendar
+          }
+        ].map(btn => (
+          <button
+            key={btn.id}
+            onClick={() => {
+              setIsOpen(true);
+              setStep(btn.id);
+            }}
+            className="w-full h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center relative font-bold hover:bg-gray-50"
+          >
+            <span className="text-lg uppercase truncate px-12">
+              {btn.text}
+            </span>
+            <btn.icon size={20} className="absolute right-6 opacity-40" />
           </button>
         ))}
       </div>
@@ -122,134 +229,180 @@ export default function BookingWidget({ services, masters, businessName }: any) 
   }
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="bg-white w-full max-w-[420px] rounded-[40px] p-8 relative text-slate-900 shadow-2xl h-[80vh] flex flex-col animate-in zoom-in">
-        <button onClick={closeAndReset} className="absolute top-6 right-6 p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+      <div className="bg-white w-full max-w-[420px] rounded-[40px] p-8 shadow-2xl h-[80vh] flex flex-col relative">
+
+        <button
+          onClick={closeAndReset}
+          className="absolute top-6 right-6 p-2 bg-gray-100 rounded-full"
+        >
           <X size={20} />
         </button>
 
+        {/* ================= STEP 1 ================= */}
         {step === 1 && (
-          <div className="flex flex-col h-full overflow-hidden">
-            <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter italic">Услуги</h3>
-            <div className="space-y-6 overflow-y-auto no-scrollbar pr-1">
-              {Object.keys(groupedServices).map(cat => (
-                <div key={cat}>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{cat}</h4>
-                  <div className="space-y-2">
-                    {groupedServices[cat].map((s: any, i: number) => (
-                      <div key={i} onClick={() => { setFormData(p => ({...p, service: s.name, price: s.price})); setStep(formData.master ? 3 : 2); }} className="p-4 border border-gray-100 rounded-2xl flex justify-between items-center hover:border-black transition-colors cursor-pointer">
-                        <span className="font-bold">{s.name}</span>
-                        <span className="text-sm opacity-50">{s.price}</span>
-                      </div>
-                    ))}
+          <div className="overflow-y-auto">
+            <h3 className="text-2xl font-black uppercase mb-6 italic">
+              Услуги
+            </h3>
+
+            {Object.entries(groupedServices).map(([category, list]) => (
+              <div key={category} className="mb-6">
+                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">
+                  {category}
+                </h4>
+
+                {list.map(service => (
+                  <div
+                    key={service.name}
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        service: service.name,
+                        price: service.price
+                      }));
+                      setStep(formData.master ? 3 : 2);
+                    }}
+                    className="p-4 border rounded-2xl flex justify-between cursor-pointer hover:border-black mb-2"
+                  >
+                    <span className="font-bold">{service.name}</span>
+                    <span className="opacity-50">{service.price}</span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
 
+        {/* ================= STEP 2 ================= */}
         {step === 2 && (
-            <div className="flex flex-col h-full">
-                <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter italic text-center">Выберите мастера</h3>
-                <div className="space-y-3 overflow-y-auto no-scrollbar pr-1">
-                    {masters.map((m: any, i: number) => (
-                        <div 
-                          key={i} 
-                          onClick={() => { setFormData(p => ({...p, master: m.name})); setStep(formData.service ? 3 : 1); }} 
-                          className="flex items-center gap-4 p-4 border border-gray-100 rounded-[24px] hover:border-black cursor-pointer transition-all relative"
-                        >
-                            <div className="relative w-16 h-16 flex-shrink-0">
-                                <img 
-                                  src={m.photo_url || "/placeholder-avatar.svg"} 
-                                  alt={m.name}
-                                  className="w-full h-full rounded-full object-cover bg-gray-100 border border-gray-50 shadow-sm"
-                                />
-                                
-                                {m.on_duty && (
-                                    <div className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white"></span>
-                                    </div>
-                                )}
-                            </div>
+          <div className="overflow-y-auto">
+            <h3 className="text-2xl font-black uppercase mb-6 italic text-center">
+              Выберите мастера
+            </h3>
 
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold uppercase text-sm tracking-widest">{m.name}</span>
-                                    {m.on_duty && <span className="text-[8px] font-black text-green-600 uppercase tracking-tighter bg-green-50 px-1.5 py-0.5 rounded">На смене</span>}
-                                </div>
-                                <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-0.5">{m.specialty}</div>
-                            </div>
-                        </div>
-                    ))}
-                    
-                    <div onClick={() => { setFormData(p => ({...p, master: "Любой мастер"})); setStep(formData.service ? 3 : 1); }} className="p-4 bg-gray-50 rounded-[24px] text-center font-bold text-xs uppercase tracking-[0.2em] cursor-pointer hover:bg-gray-100 transition mt-2">
-                      Любой свободный мастер
-                    </div>
+            {masters.map(master => (
+              <div
+                key={master.name}
+                onClick={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    master: master.name
+                  }));
+                  setStep(formData.service ? 3 : 1);
+                }}
+                className="p-4 border rounded-2xl cursor-pointer hover:border-black mb-3"
+              >
+                <div className="font-bold uppercase text-sm">
+                  {master.name}
                 </div>
-            </div>
+                <div className="text-xs text-gray-400">
+                  {master.specialty}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
+        {/* ================= STEP 3 ================= */}
         {step === 3 && (
-            <div className="flex flex-col h-full">
-                <h3 className="text-2xl font-black uppercase mb-4 tracking-tighter italic">Время</h3>
-                <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6">
-                    {dates.map(d => (
-                        <button key={d.value} onClick={() => handleDateSelect(d.value)} className={`shrink-0 px-5 py-3 rounded-2xl border transition-all ${formData.date === d.value ? 'bg-black text-white border-black' : 'border-gray-100'}`}>
-                            <div className="text-[10px] font-bold uppercase mb-1 opacity-50">{d.label.split(' ')[0]}</div>
-                            <div className="text-lg font-black">{d.label.split(' ')[1]}</div>
-                        </button>
-                    ))}
-                </div>
-                {formData.date && (
-                    <div className="grid grid-cols-4 gap-2 overflow-y-auto no-scrollbar pb-20">
-                        {timeSlots.map(t => (
-                            <button key={t} disabled={bookedTimes.includes(t)} onClick={() => setFormData(p => ({...p, time: t}))} className={`py-3 rounded-xl text-xs font-bold ${bookedTimes.includes(t) ? 'opacity-20 pointer-events-none' : formData.time === t ? 'bg-black text-white' : 'bg-gray-50'}`}>
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {formData.time && (
-                    <div className="absolute bottom-8 left-8 right-8 space-y-3 bg-white pt-4">
-                        
-                        <input 
-                          type="text" 
-                          placeholder="ИМЯ" 
-                          className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" 
-                          value={formData.name}
-                          onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
-                        />
-                        
-                        <input 
-                          type="tel" 
-                          placeholder="+7 (___) ___-__-__" 
-                          className="w-full h-14 bg-gray-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 ring-black" 
-                          value={formData.phone}
-                          onChange={handlePhoneChange}
-                        />
+          <div className="flex flex-col h-full">
+            <h3 className="text-2xl font-black uppercase mb-4 italic">
+              Время
+            </h3>
 
-                        <button 
-                          onClick={handleBook} 
-                          disabled={!formData.name || !isPhoneValid || loading} 
-                          className="w-full h-16 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {loading && <Loader2 className="animate-spin" size={18} />}
-                            {loading ? "Запись..." : "Подтвердить"}
-                        </button>
-                    </div>
-                )}
+            <div className="flex gap-2 overflow-x-auto mb-4">
+              {dates.map(d => (
+                <button
+                  key={d.value}
+                  onClick={() => handleDateSelect(d.value)}
+                  className={`px-4 py-2 rounded-xl border ${
+                    formData.date === d.value
+                      ? "bg-black text-white"
+                      : ""
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
             </div>
+
+            {formData.date && (
+              <div className="grid grid-cols-4 gap-2 overflow-y-auto">
+                {timeSlots.map(time => (
+                  <button
+                    key={time}
+                    disabled={bookedTimes.includes(time)}
+                    onClick={() =>
+                      setFormData(prev => ({ ...prev, time }))
+                    }
+                    className={`py-2 rounded-xl text-xs font-bold ${
+                      bookedTimes.includes(time)
+                        ? "opacity-20"
+                        : formData.time === time
+                        ? "bg-black text-white"
+                        : "bg-gray-50"
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {formData.time && (
+              <div className="mt-auto space-y-3 pt-4">
+                <input
+                  type="text"
+                  placeholder="ИМЯ"
+                  className="w-full h-12 bg-gray-50 rounded-xl px-4"
+                  value={formData.name}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      name: e.target.value
+                    }))
+                  }
+                />
+
+                <input
+                  type="tel"
+                  placeholder="+7 (___) ___-__-__"
+                  className="w-full h-12 bg-gray-50 rounded-xl px-4"
+                  value={formData.phone}
+                  onChange={handlePhoneChange}
+                />
+
+                <button
+                  onClick={handleBook}
+                  disabled={!formData.name || !isPhoneValid || loading}
+                  className="w-full h-14 bg-black text-white rounded-xl font-bold flex justify-center items-center gap-2 disabled:opacity-50"
+                >
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  {loading ? "Запись..." : "Подтвердить"}
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
+        {/* ================= STEP 4 ================= */}
         {step === 4 && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-                <CheckCircle size={80} className="text-green-500 mb-6" />
-                <h3 className="text-3xl font-black uppercase italic tracking-tighter">Готово!</h3>
-                <p className="text-gray-400 font-bold text-sm mt-2 uppercase tracking-widest">Ждем вас {formData.time}</p>
-                <button onClick={() => window.location.reload()} className="mt-10 font-bold border-b-2 border-black uppercase text-xs tracking-widest">На главную</button>
-            </div>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <CheckCircle size={80} className="text-green-500 mb-6" />
+            <h3 className="text-3xl font-black uppercase italic">
+              Готово!
+            </h3>
+            <p className="text-gray-400 mt-2">
+              Ждем вас {formData.time}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-10 font-bold border-b-2 border-black uppercase text-xs"
+            >
+              На главную
+            </button>
+          </div>
         )}
       </div>
     </div>
