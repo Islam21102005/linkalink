@@ -213,7 +213,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 <div className="absolute bottom-6 left-6 right-6">
-                                    <h4 className="text-white font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
+                                    <h4 className="text-gray-900 font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
                                 </div>
                                 <div className="absolute bottom-8 right-6 bg-white/90 backdrop-blur px-3 py-1 rounded-lg font-bold text-xs">
                                     {house.price} ₽ / ночь
@@ -244,7 +244,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                         <p className="text-gray-600 leading-relaxed text-sm font-medium">{booking.house.description}</p>
                     </div>
                     <div className="p-6 border-t border-gray-100 bg-white sticky bottom-0">
-                        <button onClick={() => setStep(3)} className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest shadow-xl">Выбрать даты</button>
+                        <button onClick={() => setStep(3)} className="w-full bg-black text-gray-900 py-4 rounded-xl font-bold uppercase tracking-widest shadow-xl">Выбрать даты</button>
                     </div>
                 </div>
             )}
@@ -267,12 +267,12 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                                 const isSel = booking.startDate?.getDate() === day || booking.endDate?.getDate() === day;
                                 const isRange = booking.startDate && booking.endDate && new Date(year, month, day) > booking.startDate && new Date(year, month, day) < booking.endDate;
                                 return (
-                                    <button key={day} disabled={isBlocked} onClick={() => handleDateClick(day)} className={`h-10 w-10 mx-auto rounded-full text-xs font-bold ${isBlocked ? "text-gray-300 line-through" : isSel ? "bg-black text-white" : isRange ? "bg-gray-200" : "bg-white"}`}>{day}</button>
+                                    <button key={day} disabled={isBlocked} onClick={() => handleDateClick(day)} className={`h-10 w-10 mx-auto rounded-full text-xs font-bold ${isBlocked ? "text-gray-300 line-through" : isSel ? "bg-black text-gray-900" : isRange ? "bg-gray-200" : "bg-white"}`}>{day}</button>
                                 )
                             })}
                         </div>
                     </div>
-                    <button disabled={!booking.startDate || !booking.endDate} onClick={() => setStep(4)} className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest disabled:opacity-50 mt-4">Далее</button>
+                    <button disabled={!booking.startDate || !booking.endDate} onClick={() => setStep(4)} className="w-full bg-black text-gray-900 py-4 rounded-xl font-bold uppercase tracking-widest disabled:opacity-50 mt-4">Далее</button>
                 </div>
             )}
 
@@ -286,7 +286,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                                 <div className="flex items-center gap-3">
                                     <button onClick={() => setBooking((p:any) => ({...p, selectedAddons: {...p.selectedAddons, [addon.name]: Math.max(0, (p.selectedAddons[addon.name]||0)-1)}}))} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><Minus size={14}/></button>
                                     <span className="font-bold w-4 text-center">{booking.selectedAddons[addon.name] || 0}</span>
-                                    <button onClick={() => setBooking((p:any) => ({...p, selectedAddons: {...p.selectedAddons, [addon.name]: (p.selectedAddons[addon.name]||0)+1}}))} className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center"><Plus size={14}/></button>
+                                    <button onClick={() => setBooking((p:any) => ({...p, selectedAddons: {...p.selectedAddons, [addon.name]: (p.selectedAddons[addon.name]||0)+1}}))} className="w-8 h-8 bg-black text-gray-900 rounded-full flex items-center justify-center"><Plus size={14}/></button>
                                 </div>
                             </div>
                         ))}
@@ -294,7 +294,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                     <div className="space-y-3 mt-auto">
                         <input type="text" placeholder="ИМЯ" className="w-full p-4 rounded-xl border font-bold text-sm" onChange={e => setBooking({...booking, clientName: e.target.value})} />
                         <input type="tel" placeholder="+7 (___) ___-__-__" className="w-full p-4 rounded-xl border font-bold text-sm" value={booking.clientPhone} onChange={handlePhoneChange} />
-                        <button disabled={!booking.clientName || !isPhoneValid} onClick={() => setStep(5)} className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase disabled:opacity-50">Далее</button>
+                        <button disabled={!booking.clientName || !isPhoneValid} onClick={() => setStep(5)} className="w-full bg-black text-gray-900 py-4 rounded-xl font-bold uppercase disabled:opacity-50">Далее</button>
                     </div>
                 </div>
             )}
@@ -325,7 +325,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                             </div>
                         </div>
 
-                        <div className="mt-6 bg-black text-white p-4 rounded-xl text-center">
+                        <div className="mt-6 bg-black text-gray-900 p-4 rounded-xl text-center">
                             <div className="text-[10px] uppercase opacity-70 mb-1">К оплате сейчас (30%)</div>
                             <div className="text-3xl font-black">{deposit} ₽</div>
                         </div>
@@ -334,7 +334,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                     <button 
                         onClick={handleBookingRequest} 
                         disabled={loading}
-                        className="w-full bg-green-500 text-white py-4 rounded-xl font-bold uppercase tracking-widest mt-auto flex justify-center gap-2 shadow-xl hover:bg-green-600 transition-all"
+                        className="w-full bg-green-500 text-gray-900 py-4 rounded-xl font-bold uppercase tracking-widest mt-auto flex justify-center gap-2 shadow-xl hover:bg-green-600 transition-all"
                     >
                         {loading ? <Loader2 className="animate-spin" /> : "Связаться для оплаты"}
                     </button>

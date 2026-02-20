@@ -29,7 +29,7 @@ export default function TrackingSocials({ business }: Props) {
           href={`https://t.me/${business.telegram}`} 
           target="_blank" 
           onClick={() => track('click_telegram')}
-          className="text-white hover:text-gray-300 transition-transform hover:scale-110"
+          className="text-gray-900 hover:text-gray-300 transition-transform hover:scale-110"
         >
           <Send size={30} strokeWidth={1.5} />
         </a>
@@ -39,7 +39,7 @@ export default function TrackingSocials({ business }: Props) {
         <a 
           href={`tel:${business.phone}`} 
           onClick={() => track('click_phone')}
-          className="text-white hover:text-gray-300 transition-transform hover:scale-110"
+          className="text-gray-900 hover:text-gray-300 transition-transform hover:scale-110"
         >
           <Phone size={30} strokeWidth={1.5} />
         </a>
@@ -50,7 +50,7 @@ export default function TrackingSocials({ business }: Props) {
           href={`https://instagram.com/${business.instagram}`} 
           target="_blank" 
           onClick={() => track('click_instagram')}
-          className="text-white hover:text-gray-300 transition-transform hover:scale-110"
+          className="text-gray-900 hover:text-gray-300 transition-transform hover:scale-110"
         >
           <Instagram size={30} strokeWidth={1.5} />
         </a>

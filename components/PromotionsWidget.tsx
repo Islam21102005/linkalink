@@ -12,8 +12,8 @@ export default function PromotionsWidget({ promotions }: { promotions: any[] }) 
         {promotions.map((promo, i) => (
           <div 
             key={i} 
-            className={`min-w-[85%] sm:min-w-[300px] h-32 rounded-3xl p-6 text-white snap-center shadow-xl flex flex-col justify-center relative overflow-hidden bg-gradient-to-r ${promo.color || 'from-gray-900 to-black'}`}
-          >
+            className={`min-w-[85%] sm:min-w-[300px] h-32 rounded-3xl p-6 text-gray-900 snap-center shadow-xl flex flex-col justify-center relative overflow-hidden bg-gradient-to-r ${promo.color || 'from-gray-900 to-black'}`}
+          > 
             <div className="absolute -right-4 -bottom-8 opacity-20 rotate-12">
                 <Flame size={100} />
             </div>

@@ -24,7 +24,7 @@ export default function AboutWidget({ business }: { business: any }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-[420px] rounded-[40px] overflow-hidden relative text-slate-900 shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[85vh]">
         
-        <button onClick={() => setIsOpen(false)} className="absolute top-5 right-5 p-2 bg-black/20 backdrop-blur-xl text-white rounded-full hover:bg-black/40 z-50 transition">
+        <button onClick={() => setIsOpen(false)} className="absolute top-5 right-5 p-2 bg-black/20 backdrop-blur-xl text-gray-900 rounded-full hover:bg-black/40 z-50 transition">
           <X size={24} />
         </button>
 
@@ -65,7 +65,7 @@ export default function AboutWidget({ business }: { business: any }) {
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                     {days.map((day, i) => (
-                        <div key={i} className={`py-2 rounded-lg border text-center ${i === (new Date().getDay() || 7) - 1 ? 'bg-black text-white' : 'bg-gray-50 border-gray-100'}`}>
+                        <div key={i} className={`py-2 rounded-lg border text-center ${i === (new Date().getDay() || 7) - 1 ? 'bg-black text-gray-900' : 'bg-gray-50 border-gray-100'}`}>
                             <div className="text-[9px] font-bold mb-1">{day.n}</div>
                             <div className="text-[8px] font-black">{day.h}</div>
                         </div>
@@ -84,7 +84,7 @@ export default function AboutWidget({ business }: { business: any }) {
 
             {/* КАРТЫ */}
             {business.map_link && (
-                <a href={business.map_link} target="_blank" className="w-full bg-black text-white h-16 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform uppercase tracking-widest text-sm">
+                <a href={business.map_link} target="_blank" className="w-full bg-black text-gray-900 h-16 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform uppercase tracking-widest text-sm">
                    Построить маршрут
                 </a>
             )}
