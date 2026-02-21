@@ -15,6 +15,8 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [houseDetail, setHouseDetail] = useState<any>(null);
+  const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
 
   const initialBooking = {
     house: null,
@@ -34,6 +36,8 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
     setIsOpen(false);
     setStep(1);
     setBooking(initialBooking);
+    setHouseDetail(null);
+    setDetailPhotoIndex(0);
   };
 
   const back = () => {
@@ -200,35 +204,154 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
 
         <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50 pb-20">
             
-            {step === 1 && (
+            {step === 1 && !houseDetail && (
                 <div className="p-6 space-y-6">
                     <h3 className="text-3xl font-black uppercase italic tracking-tighter">Наши дома</h3>
-                    {houses.map((house) => (
-                        <div key={house.id} onClick={() => { setBooking({...booking, house}); setStep(2); }} className="bg-white rounded-[32px] overflow-hidden shadow-lg cursor-pointer group hover:scale-[1.02] transition-transform">
+                    {houses.map((house) => {
+                      const coverImg = house.photo_url || house.cover || house.image;
+                      return (
+                        <div key={house.id}
+                          onClick={() => {
+                            if (house.show_details) {
+                              setHouseDetail(house);
+                              setDetailPhotoIndex(0);
+                            } else {
+                              setBooking({...booking, house});
+                              setStep(2);
+                            }
+                          }}
+                          className="bg-white rounded-[32px] overflow-hidden shadow-lg cursor-pointer group hover:scale-[1.02] transition-transform">
                             <div className="h-64 relative overflow-hidden">
-                                <img 
-                                  src={house.cover || house.image} 
-                                  alt={house.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
+                                {coverImg ? (
+                                  <img
+                                    src={coverImg}
+                                    alt={house.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-5xl">🏠</div>
+                                )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 <div className="absolute bottom-6 left-6 right-6">
-                                    <h4 className="text-gray-900 font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
+                                    <h4 className="text-white font-black text-2xl uppercase tracking-tight leading-none">{house.name}</h4>
+                                    {house.show_details && (
+                                      <p className="text-white/70 text-xs mt-1 font-medium">Нажмите, чтобы узнать подробнее →</p>
+                                    )}
                                 </div>
                                 <div className="absolute bottom-8 right-6 bg-white/90 backdrop-blur px-3 py-1 rounded-lg font-bold text-xs">
                                     {house.price} ₽ / ночь
                                 </div>
                             </div>
                         </div>
-                    ))}
+                      );
+                    })}
                 </div>
             )}
+
+            {/* Детальный просмотр дома */}
+            {step === 1 && houseDetail && (() => {
+              const photos: string[] = houseDetail.photos?.length > 0
+                ? houseDetail.photos
+                : houseDetail.photo_url ? [houseDetail.photo_url] : [];
+              const featuresList: string[] = houseDetail.features
+                ? houseDetail.features.split('\n').map((f: string) => f.trim()).filter(Boolean)
+                : [];
+              return (
+                <div className="flex flex-col bg-white min-h-full">
+                  {/* Карусель фото */}
+                  {photos.length > 0 && (
+                    <div className="relative h-64 bg-gray-100">
+                      <img
+                        src={photos[detailPhotoIndex]}
+                        alt={houseDetail.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {photos.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setDetailPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 rounded-full flex items-center justify-center shadow"
+                          >
+                            <ChevronLeft size={18} />
+                          </button>
+                          <button
+                            onClick={() => setDetailPhotoIndex(i => (i + 1) % photos.length)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 rounded-full flex items-center justify-center shadow"
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                            {photos.map((_: any, idx: number) => (
+                              <button
+                                key={idx}
+                                onClick={() => setDetailPhotoIndex(idx)}
+                                className={`w-2 h-2 rounded-full transition-all ${idx === detailPhotoIndex ? 'bg-white' : 'bg-white/40'}`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Видео */}
+                  {houseDetail.video_url && (
+                    <div className="h-48">
+                      <iframe src={houseDetail.video_url} className="w-full h-full" allowFullScreen />
+                    </div>
+                  )}
+
+                  <div className="p-6 flex-1 space-y-5">
+                    <div>
+                      <h3 className="text-3xl font-black uppercase italic tracking-tighter mb-2">{houseDetail.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-black">{houseDetail.price} ₽</span>
+                        <span className="text-gray-400 text-sm">/ ночь</span>
+                      </div>
+                    </div>
+
+                    {houseDetail.description && (
+                      <p className="text-gray-600 leading-relaxed text-sm">{houseDetail.description}</p>
+                    )}
+
+                    {featuresList.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Особенности и удобства</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {featuresList.map((feature: string, fi: number) => (
+                            <div key={fi} className="flex items-center gap-2 text-sm text-gray-700">
+                              <span className="text-green-500 font-bold">✓</span>
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-6 border-t border-gray-100 bg-white sticky bottom-0 flex gap-3">
+                    <button
+                      onClick={() => setHouseDetail(null)}
+                      className="px-5 py-4 rounded-xl border-2 border-gray-200 font-bold text-sm"
+                    >
+                      ← Назад
+                    </button>
+                    <button
+                      onClick={() => { setBooking({...booking, house: houseDetail}); setHouseDetail(null); setStep(2); }}
+                      className="flex-1 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest"
+                    >
+                      Забронировать
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {step === 2 && booking.house && (
                 <div className="flex flex-col h-full bg-white">
                     <div className="h-[40vh] w-full relative bg-gray-200">
                        <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
-                          {(booking.house.gallery || [booking.house.cover]).map((img: string, i: number) => (
+                          {(booking.house.photos?.length > 0 ? booking.house.photos : booking.house.gallery || [booking.house.cover || booking.house.photo_url]).map((img: string, i: number) => (
                             <div key={i} className="min-w-full h-full snap-center relative">
                               <img 
                                 src={img} 

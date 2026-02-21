@@ -737,7 +737,7 @@ export default function Home() {
                         placeholder="Ваше имя"
                         value={contactForm.name}
                         onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
                         required
                       />
                     </div>
@@ -747,7 +747,7 @@ export default function Home() {
                         placeholder="+7 (___) ___-__-__"
                         value={contactForm.phone}
                         onChange={handlePhoneChange}
-                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-500/50 transition-colors text-sm md:text-base"
                         required
                       />
                     </div>
@@ -757,7 +757,7 @@ export default function Home() {
                         value={contactForm.message}
                         onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
                         rows={4}
-                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-white/40 focus:outline-none focus:border-pink-500/50 transition-colors resize-none text-sm md:text-base"
+                        className="w-full px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl bg-white/40 border border-gray-200/80 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-pink-500/50 transition-colors resize-none text-sm md:text-base"
                       />
                     </div>
                     <button
@@ -774,6 +774,12 @@ export default function Home() {
                         'Отправить заявку'
                       )}
                     </button>
+                    <p className="text-center text-gray-400 text-xs">
+                      Нажимая на кнопку, вы соглашаетесь с условиями{' '}
+                      <a href="#" className="underline hover:text-gray-600 transition-colors">
+                        политики конфиденциальности
+                      </a>
+                    </p>
                   </form>
                 )}
               </GlassCard>

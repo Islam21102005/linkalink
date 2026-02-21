@@ -15,6 +15,11 @@ interface Service {
   description: string
   is_active: boolean
   sort_order: number
+  // Поля для инфо о доме (глэмпинг / аренда)
+  show_details?: boolean
+  photo_url?: string
+  photos?: string[]
+  features?: string
 }
 
 interface Master {
@@ -157,7 +162,8 @@ export default function BusinessEditor({
   // Услуги
   const addService = () => setServices([...services, {
     id: Date.now(), business_id: business.id, name: '', category: '', price: 0,
-    duration_minutes: 30, description: '', is_active: true, sort_order: services.length
+    duration_minutes: 30, description: '', is_active: true, sort_order: services.length,
+    show_details: false, photo_url: '', photos: [], features: ''
   }])
   const updateService = (index: number, field: string, value: any) => {
     const updated = [...services]
@@ -235,11 +241,24 @@ export default function BusinessEditor({
       const toDeleteServices = oldServiceIds.filter(id => !currentServiceIds.includes(id))
       if (toDeleteServices.length > 0) await supabase.from('services').delete().in('id', toDeleteServices)
       for (const service of services) {
+        const serviceData = {
+          business_id: service.business_id,
+          name: service.name,
+          category: service.category,
+          price: service.price,
+          duration_minutes: service.duration_minutes,
+          description: service.description,
+          is_active: service.is_active,
+          sort_order: service.sort_order,
+          show_details: service.show_details || false,
+          photo_url: service.photo_url || '',
+          photos: service.photos || [],
+          features: service.features || '',
+        }
         if (service.id > 1000000000000) {
-          const { id, ...data } = service
-          await supabase.from('services').insert(data)
+          await supabase.from('services').insert(serviceData)
         } else {
-          await supabase.from('services').update(service).eq('id', service.id)
+          await supabase.from('services').update(serviceData).eq('id', service.id)
         }
       }
 
@@ -634,6 +653,106 @@ export default function BusinessEditor({
                       rows={2} placeholder="Описание услуги" 
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                   </div>
+                  
+                  {/* Блок «Инфо о доме» — для глэмпинга и аренды */}
+                  {(businessType === 'glamping' || businessType === 'rental') && (
+                    <div className="border border-blue-200 rounded-xl p-4 bg-blue-50">
+                      <label className="flex items-center gap-3 cursor-pointer mb-3">
+                        <input type="checkbox" checked={s.show_details || false}
+                          onChange={(e) => updateService(i, 'show_details', e.target.checked)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                        <div>
+                          <span className="text-sm font-semibold text-blue-800">🏠 Есть информация о доме</span>
+                          <p className="text-xs text-blue-600 mt-0.5">На карточке появится фото, при клике — детальная страница с каруселью, описанием и особенностями</p>
+                        </div>
+                      </label>
+                      
+                      {s.show_details && (
+                        <div className="space-y-4 pt-2 border-t border-blue-200">
+                          {/* Обложка */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Фото обложки (показывается на карточке)</label>
+                            <div className="flex items-center gap-3">
+                              {s.photo_url && (
+                                <img src={s.photo_url} alt="" className="w-20 h-14 object-cover rounded-lg border border-gray-200" />
+                              )}
+                              <div className="flex-1 space-y-2">
+                                <label className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-lg cursor-pointer text-sm w-fit">
+                                  <Upload size={16} />
+                                  Загрузить обложку
+                                  <input type="file" accept="image/*" className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0]
+                                      if (!file) return
+                                      try {
+                                        const url = await uploadImage(file, `services/${business.id}`)
+                                        updateService(i, 'photo_url', url)
+                                        e.target.value = ''
+                                      } catch { alert('Ошибка загрузки') }
+                                    }} />
+                                </label>
+                                <input type="text" value={s.photo_url || ''}
+                                  onChange={(e) => updateService(i, 'photo_url', e.target.value)}
+                                  placeholder="или вставьте URL"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                              </div>
+                              {s.photo_url && (
+                                <button onClick={() => updateService(i, 'photo_url', '')} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Карусель фото */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-2">Фотографии (карусель в детальном просмотре)</label>
+                            <div className="grid grid-cols-3 gap-2 mb-2">
+                              {(s.photos || []).map((photo: string, pi: number) => (
+                                <div key={pi} className="relative group">
+                                  <img src={photo} alt="" className="w-full h-20 object-cover rounded-lg border-2 border-gray-200" />
+                                  <button
+                                    onClick={() => {
+                                      const newPhotos = (s.photos || []).filter((_: string, idx: number) => idx !== pi)
+                                      updateService(i, 'photos', newPhotos)
+                                    }}
+                                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <label className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-lg cursor-pointer text-sm w-fit">
+                              <Upload size={16} />
+                              Добавить фото
+                              <input type="file" accept="image/*" className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+                                  try {
+                                    const url = await uploadImage(file, `services/${business.id}`)
+                                    updateService(i, 'photos', [...(s.photos || []), url])
+                                    e.target.value = ''
+                                  } catch { alert('Ошибка загрузки') }
+                                }} />
+                            </label>
+                          </div>
+
+                          {/* Особенности */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Особенности / удобства (каждая с новой строки)</label>
+                            <textarea value={s.features || ''}
+                              onChange={(e) => updateService(i, 'features', e.target.value)}
+                              rows={3}
+                              placeholder={"Wi-Fi\nКондиционер\nЧайник и кофе\nВид на лес"}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                            <p className="text-xs text-gray-400 mt-1">Отображаются иконками ✓ в детальном просмотре дома</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={s.is_active} onChange={(e) => updateService(i, 'is_active', e.target.checked)} 

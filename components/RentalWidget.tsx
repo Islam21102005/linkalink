@@ -332,7 +332,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
                     const isToday = dateStr === new Date().toISOString().split("T")[0];
                     const isPastDay = date < new Date(new Date().toDateString());
                     return (
-                      <div key={dateStr} className="flex flex-col gap-1 min-w-[44px]">
+                      <div key={dateStr} className="flex flex-col gap-1 min-w-[52px]">
                         {/* Day header */}
                         <div className={`text-center py-1.5 rounded-xl mb-1 ${isToday ? "bg-black text-white" : "bg-gray-50"}`}>
                           <div className={`text-[9px] font-bold ${isToday ? "text-white/70" : "text-gray-400"}`}>{DAY_NAMES[di]}</div>
@@ -353,7 +353,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
                               disabled={booked || past}
                               onClick={() => handleSlotSelect(dateStr, slot)}
                               title={slot}
-                              className={`h-7 w-full rounded-lg text-[9px] font-bold transition-all ${
+                              className={`h-7 w-full rounded-lg text-[9px] font-bold transition-all leading-none flex items-center justify-center ${
                                 booked || past
                                   ? "bg-gray-100 text-gray-300 cursor-not-allowed"
                                   : isStart || isEnd
@@ -363,7 +363,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
                                   : "bg-gray-50 hover:bg-gray-200 text-gray-600"
                               }`}
                             >
-                              {isStart ? "▶" : isEnd ? "◼" : ""}
+                              <span>{slot}</span>
                             </button>
                           );
                         })}
