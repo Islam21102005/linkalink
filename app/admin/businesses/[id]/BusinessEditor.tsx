@@ -36,6 +36,9 @@ interface Addon {
   description: string
   is_active: boolean
   sort_order: number
+  show_details: boolean
+  photos: string[]
+  video_url: string
 }
 
 export default function BusinessEditor({
@@ -166,7 +169,8 @@ export default function BusinessEditor({
   // Доп. услуги
   const addAddon = () => setAddons([...addons, {
     id: Date.now(), business_id: business.id, name: '', price: 0,
-    description: '', is_active: true, sort_order: addons.length
+    description: '', is_active: true, sort_order: addons.length,
+    show_details: false, photos: [], video_url: ''
   }])
   const updateAddon = (index: number, field: string, value: any) => {
     const updated = [...addons]
@@ -374,9 +378,13 @@ export default function BusinessEditor({
                 <option value="barbershop">💈 Барбершоп</option>
                 <option value="salon">💅 Салон красоты</option>
                 <option value="glamping">🏕 Глэмпинг</option>
+                <option value="rental">🏢 Аренда помещения</option>
                 <option value="cafe">☕️ Кафе</option>
                 <option value="restaurant">🍽 Ресторан</option>
               </select>
+              {businessType === 'rental' && (
+                <p className="text-xs text-blue-600 mt-1">💡 Для аренды: добавьте помещения в разделе «Услуги». Цена = стоимость за час. Клиент выбирает слоты по 30 мин.</p>
+              )}
             </div>
             
             <div>
@@ -648,10 +656,13 @@ export default function BusinessEditor({
         {activeTab === 'addons' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Дополнительные услуги, которые клиент может выбрать при записи</p>
+              <div>
+                <p className="text-sm text-gray-600">Дополнительные услуги</p>
+                <p className="text-xs text-gray-400 mt-1">Отображаются как информационные карточки на странице бизнеса</p>
+              </div>
               <button onClick={addAddon} className="flex items-center gap-2 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg font-medium transition-colors">
                 <Plus size={18} />
-                Добавить доп. услугу
+                Добавить
               </button>
             </div>
             
@@ -680,17 +691,79 @@ export default function BusinessEditor({
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Описание (опционально)</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Описание</label>
                     <textarea value={addon.description || ''} onChange={(e) => updateAddon(i, 'description', e.target.value)} 
-                      rows={2} placeholder="Краткое описание дополнительной услуги" 
+                      rows={2} placeholder="Краткое описание услуги" 
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                  </div>
+
+                  {/* Show details toggle */}
+                  <div className="border border-purple-200 rounded-xl p-4 bg-purple-50">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input type="checkbox" checked={addon.show_details || false}
+                        onChange={(e) => updateAddon(i, 'show_details', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                      <div>
+                        <span className="text-sm font-semibold text-purple-800">Подробнее об услуге</span>
+                        <p className="text-xs text-purple-600 mt-0.5">Показывать карточку с медиа на странице</p>
+                      </div>
+                    </label>
+                    
+                    {addon.show_details && (
+                      <div className="space-y-4 pt-2 border-t border-purple-200">
+                        {/* Photos */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Фотографии (карусель)</label>
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                            {(addon.photos || []).map((photo: string, pi: number) => (
+                              <div key={pi} className="relative group">
+                                <img src={photo} alt="" className="w-full h-20 object-cover rounded-lg border-2 border-gray-200" />
+                                <button
+                                  onClick={() => {
+                                    const newPhotos = (addon.photos || []).filter((_: string, idx: number) => idx !== pi)
+                                    updateAddon(i, 'photos', newPhotos)
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <label className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-lg cursor-pointer text-sm transition-colors w-fit">
+                            <Upload size={16} />
+                            Добавить фото
+                            <input type="file" accept="image/*" className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                try {
+                                  const url = await uploadImage(file, `addons/${business.id}`)
+                                  updateAddon(i, 'photos', [...(addon.photos || []), url])
+                                  e.target.value = ''
+                                } catch { alert('Ошибка загрузки фото') }
+                              }} />
+                          </label>
+                        </div>
+
+                        {/* Video URL */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Видео (URL iframe)</label>
+                          <input type="text" value={addon.video_url || ''}
+                            onChange={(e) => updateAddon(i, 'video_url', e.target.value)}
+                            placeholder="https://www.youtube.com/embed/..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                          <p className="text-xs text-gray-400 mt-1">YouTube / Vimeo embed-ссылка</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={addon.is_active} 
                       onChange={(e) => updateAddon(i, 'is_active', e.target.checked)} 
                       className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                    <span className="text-sm font-medium text-gray-700">Активна (доступна для выбора)</span>
+                    <span className="text-sm font-medium text-gray-700">Активна (отображается на сайте)</span>
                   </label>
                 </div>
               ))}
@@ -744,10 +817,38 @@ export default function BusinessEditor({
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">URL фото</label>
-                    <input type="text" value={m.photo_url || ''} onChange={(e) => updateMaster(i, 'photo_url', e.target.value)} 
-                      placeholder="https://example.com/photo.jpg" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Фото мастера</label>
+                    <div className="flex items-center gap-3">
+                      {m.photo_url && (
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0">
+                          <img src={m.photo_url} alt={m.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-2">
+                        <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer text-sm transition-colors w-fit">
+                          <Upload size={16} />
+                          {m.photo_url ? 'Изменить фото' : 'Загрузить фото'}
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+                              try {
+                                const url = await uploadImage(file, `masters/${business.id}`)
+                                updateMaster(i, 'photo_url', url)
+                                e.target.value = ''
+                              } catch { alert('Ошибка загрузки') }
+                            }} />
+                        </label>
+                        <input type="text" value={m.photo_url || ''} onChange={(e) => updateMaster(i, 'photo_url', e.target.value)} 
+                          placeholder="или вставьте URL фото" 
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                      </div>
+                      {m.photo_url && (
+                        <button onClick={() => updateMaster(i, 'photo_url', '')} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   
                   <div>
