@@ -95,20 +95,33 @@ export default function BusinessEditor({
   // Соцсети
   const [socialLinks, setSocialLinks] = useState<any[]>(business.social_links || [])
   
+  // Акции
+  const [promotions, setPromotions] = useState<any[]>(business.promotions || [])
+  
+  // Рассылка
+  const [broadcastMsg, setBroadcastMsg] = useState('')
+  const [broadcastLoading, setBroadcastLoading] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState<{sent: number, total: number} | null>(null)
+  const [subscribersCount, setSubscribersCount] = useState<number | null>(null)
+  
   // Услуги, мастера, доп. услуги
   const [services, setServices] = useState(initialServices)
   const [masters, setMasters] = useState(initialMasters)
   const [addons, setAddons] = useState(initialAddons)
   
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'general' | 'about' | 'social' | 'services' | 'addons' | 'masters'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'about' | 'social' | 'services' | 'addons' | 'masters' | 'promotions' | 'broadcast'>('general')
 
-  // Загрузка изображений
+  // Загрузка изображений — санитизация имени файла для любых форматов и кириллицы
   const uploadImage = async (file: File, path: string) => {
-    const fileName = `${Date.now()}-${file.name}`
+    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { data, error } = await supabase.storage
       .from('business-assets')
-      .upload(`${path}/${fileName}`, file)
+      .upload(`${path}/${safeName}`, file, {
+        contentType: file.type || 'image/jpeg',
+        upsert: false,
+      })
     if (error) throw error
     const { data: { publicUrl } } = supabase.storage
       .from('business-assets')
@@ -232,7 +245,8 @@ export default function BusinessEditor({
         show_yandex_map: showYandexMap, 
         yandex_map_link: yandexMapLink,
         gallery_photos: galleryPhotos, 
-        social_links: socialLinks
+        social_links: socialLinks,
+        promotions: promotions
       }).eq('id', business.id)
 
       // Сохранить услуги
@@ -317,13 +331,59 @@ export default function BusinessEditor({
     sunday: 'Воскресенье',
   }
 
+  // Загрузка числа подписчиков
+  const loadSubscribersCount = async () => {
+    const { count } = await supabase
+      .from('subscribers')
+      .select('*', { count: 'exact', head: true })
+      .eq('business_slug', business.slug)
+    setSubscribersCount(count || 0)
+  }
+
+  const handleBroadcast = async () => {
+    if (!broadcastMsg.trim()) return
+    setBroadcastLoading(true)
+    setBroadcastResult(null)
+    try {
+      const res = await fetch('/api/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_slug: business.slug, message: broadcastMsg }),
+      })
+      const data = await res.json()
+      setBroadcastResult({ sent: data.sent, total: data.total })
+      setBroadcastMsg('')
+    } catch {
+      alert('Ошибка отправки рассылки')
+    } finally {
+      setBroadcastLoading(false)
+    }
+  }
+
+  const PROMO_COLORS = [
+    { label: 'Красный', value: 'from-red-500 to-pink-600' },
+    { label: 'Фиолетовый', value: 'from-purple-500 to-pink-500' },
+    { label: 'Синий', value: 'from-blue-500 to-cyan-500' },
+    { label: 'Зелёный', value: 'from-green-500 to-teal-500' },
+    { label: 'Оранжевый', value: 'from-orange-500 to-amber-500' },
+    { label: 'Чёрный', value: 'from-gray-900 to-black' },
+  ]
+
+  const addPromo = () => setPromotions([...promotions, { title: '', desc: '', color: 'from-gray-900 to-black' }])
+  const updatePromo = (i: number, field: string, value: string) => {
+    const updated = [...promotions]; updated[i] = { ...updated[i], [field]: value }; setPromotions(updated)
+  }
+  const removePromo = (i: number) => setPromotions(promotions.filter((_, idx) => idx !== i))
+
   const tabs = [
     { id: 'general', label: 'Основное' },
     { id: 'about', label: 'О нас' },
     { id: 'social', label: 'Соцсети' },
+    { id: 'promotions', label: '🔥 Акции' },
     { id: 'services', label: 'Услуги' },
     { id: 'addons', label: 'Доп. услуги' },
-    { id: 'masters', label: 'Мастера' }
+    { id: 'masters', label: 'Мастера' },
+    { id: 'broadcast', label: '📣 Рассылка' },
   ]
 
   return (
@@ -993,7 +1053,207 @@ export default function BusinessEditor({
             </div>
           </div>
         )}
+
+        {/* ТАБ: АКЦИИ */}
+        {activeTab === 'promotions' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Акции и спецпредложения</p>
+                <p className="text-xs text-gray-400 mt-1">Отображаются прокручивающейся лентой на странице бизнеса</p>
+              </div>
+              <button onClick={addPromo} className="flex items-center gap-2 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg font-medium transition-colors">
+                <Plus size={18} />
+                Добавить акцию
+              </button>
+            </div>
+
+            {/* Превью */}
+            {promotions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Превью</p>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {promotions.map((promo, i) => (
+                    <div key={i}
+                      className={`min-w-[220px] h-24 rounded-2xl p-5 text-white flex flex-col justify-center relative overflow-hidden bg-gradient-to-r ${promo.color || 'from-gray-900 to-black'}`}>
+                      <p className="font-black text-lg uppercase italic leading-tight">{promo.title || 'Название акции'}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">{promo.desc || 'Описание'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {promotions.map((promo, i) => (
+                <div key={i} className="p-6 bg-gray-50 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900">Акция #{i + 1}</span>
+                    <button onClick={() => removePromo(i)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Заголовок акции</label>
+                      <input type="text" value={promo.title} onChange={(e) => updatePromo(i, 'title', e.target.value)}
+                        placeholder="Скидка 20% на первый визит"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Подзаголовок / условия</label>
+                      <input type="text" value={promo.desc} onChange={(e) => updatePromo(i, 'desc', e.target.value)}
+                        placeholder="Только до 31 марта"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Цвет карточки</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PROMO_COLORS.map((c) => (
+                        <button key={c.value} onClick={() => updatePromo(i, 'color', c.value)}
+                          className={`px-3 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r ${c.value} ${promo.color === c.value ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`}>
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {promotions.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  Нет добавленных акций
+                </div>
+              )}
+            </div>
+
+            {promotions.length > 0 && (
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg disabled:opacity-50 transition-all">
+                <Save size={20} />
+                {saving ? 'Сохранение...' : 'Сохранить акции'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ТАБ: РАССЫЛКА */}
+        {activeTab === 'broadcast' && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <h3 className="font-bold text-blue-900 mb-2">📣 Рассылка через Telegram-бот</h3>
+              <p className="text-sm text-blue-700 mb-3">
+                Клиенты могут подписаться на уведомления, нажав кнопку на странице бизнеса или перейдя по ссылке:
+              </p>
+              <code className="block bg-white text-sm px-4 py-2 rounded-lg border border-blue-200 text-blue-800 break-all">
+                https://t.me/linkalink_notify_bot?start={business.slug}
+              </code>
+              <button onClick={loadSubscribersCount}
+                className="mt-3 text-sm text-blue-600 underline hover:text-blue-800">
+                Проверить число подписчиков
+              </button>
+              {subscribersCount !== null && (
+                <p className="mt-2 text-sm font-bold text-blue-900">
+                  👥 Подписчиков: {subscribersCount}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Сообщение рассылки</label>
+              <p className="text-xs text-gray-400 mb-2">Поддерживается HTML-разметка: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href=&quot;...&quot;&gt;ссылка&lt;/a&gt;</p>
+              <textarea value={broadcastMsg} onChange={(e) => setBroadcastMsg(e.target.value)}
+                rows={6}
+                placeholder={`🔥 <b>Горячая акция!</b>\n\nСкидка 20% на все услуги до конца недели!\n\nЗаписывайтесь: ваш-сайт.ru`}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
+              <p className="text-xs text-gray-400 mt-1">{broadcastMsg.length} символов</p>
+            </div>
+
+            {/* Превью сообщения */}
+            {broadcastMsg && (
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Превью</p>
+                <div className="text-sm text-gray-800 whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: broadcastMsg }} />
+              </div>
+            )}
+
+            <button
+              onClick={handleBroadcast}
+              disabled={!broadcastMsg.trim() || broadcastLoading}
+              className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold text-base uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+            >
+              {broadcastLoading ? (
+                <>
+                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  Отправляем...
+                </>
+              ) : '📣 Отправить рассылку всем подписчикам'}
+            </button>
+
+            {broadcastResult && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                <p className="text-green-800 font-bold text-lg">✅ Рассылка отправлена!</p>
+                <p className="text-green-600 text-sm mt-1">
+                  Доставлено: {broadcastResult.sent} из {broadcastResult.total} подписчиков
+                </p>
+              </div>
+            )}
+
+            {/* История рассылок */}
+            <BroadcastHistory businessSlug={business.slug} supabase={supabase} />
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+function BroadcastHistory({ businessSlug, supabase }: { businessSlug: string, supabase: any }) {
+  const [history, setHistory] = useState<any[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  const load = async () => {
+    const { data } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .eq('business_slug', businessSlug)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setHistory(data || [])
+    setLoaded(true)
+  }
+
+  return (
+    <div>
+      {!loaded ? (
+        <button onClick={load} className="text-sm text-gray-500 underline">Показать историю рассылок</button>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">История рассылок</p>
+          {history.length === 0 ? (
+            <p className="text-sm text-gray-400">Рассылок ещё не было</p>
+          ) : (
+            history.map((b) => (
+              <div key={b.id} className="p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-400">{new Date(b.created_at).toLocaleString('ru-RU')}</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                    Отправлено: {b.sent_count}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 line-clamp-2">{b.message.replace(/<[^>]+>/g, '')}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }

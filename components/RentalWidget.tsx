@@ -49,7 +49,7 @@ function genSlots(open = "08:00", close = "22:00") {
 // Get week dates (Mon–Sun) for offset weeks
 function getWeekDates(weekOffset = 0) {
   const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun
+  const dayOfWeek = today.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(today);
   monday.setDate(today.getDate() + mondayOffset + weekOffset * 7);
@@ -60,7 +60,9 @@ function getWeekDates(weekOffset = 0) {
   });
 }
 
-const DAY_NAMES = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const DAY_NAMES_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const DAY_NAMES_FULL = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+const MONTH_NAMES = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
 export default function RentalWidget({ spaces, businessName, pricePerHour = true }: RentalWidgetProps) {
   const emptyForm: FormData = { space: "", date: "", startTime: "", endTime: "", name: "", phone: "" };
@@ -69,6 +71,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(0); // index in weekDates
   const [bookedSlots, setBookedSlots] = useState<Record<string, string[]>>({});
   const [formData, setFormData] = useState<FormData>(emptyForm);
 
@@ -77,6 +80,15 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
   const allSlots = genSlots();
 
   const isPhoneValid = formData.phone.length >= 17;
+
+  // On open, default selected day to today or first future day
+  useEffect(() => {
+    if (isOpen && step === 2) {
+      const today = new Date().toISOString().split("T")[0];
+      const todayIdx = weekDates.findIndex(d => d.toISOString().split("T")[0] === today);
+      setSelectedDayIdx(todayIdx >= 0 ? todayIdx : 0);
+    }
+  }, [isOpen, step]);
 
   // Load booked slots for selected space + visible week
   useEffect(() => {
@@ -93,12 +105,32 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
       const map: Record<string, string[]> = {};
       data?.forEach((b: any) => {
         if (!map[b.booking_date]) map[b.booking_date] = [];
-        map[b.booking_date].push(b.time);
+        // Expand booked range to individual slots
+        if (b.time && b.time.includes("–")) {
+          const [start, end] = b.time.split("–").map((t: string) => t.trim());
+          const startMins = timeToMins(start);
+          const endMins = timeToMins(end);
+          for (let m = startMins; m <= endMins; m += 30) {
+            map[b.booking_date].push(minsToTime(m));
+          }
+        } else {
+          map[b.booking_date].push(b.time);
+        }
       });
       setBookedSlots(map);
     };
     fetchBooked();
   }, [formData.space, weekOffset, isOpen]);
+
+  const timeToMins = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const minsToTime = (mins: number) => {
+    const h = Math.floor(mins / 60).toString().padStart(2, "0");
+    const m = (mins % 60).toString().padStart(2, "0");
+    return `${h}:${m}`;
+  };
 
   const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     let input = e.target.value.replace(/\D/g, "");
@@ -113,7 +145,11 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
     setFormData((p) => ({ ...p, phone: f }));
   }, []);
 
-  const handleSlotSelect = (dateStr: string, slot: string) => {
+  const selectedDate = weekDates[selectedDayIdx];
+  const selectedDateStr = selectedDate?.toISOString().split("T")[0] ?? "";
+
+  const handleSlotSelect = (slot: string) => {
+    const dateStr = selectedDateStr;
     if (!formData.startTime || (formData.startTime && formData.endTime)) {
       setFormData((p) => ({ ...p, date: dateStr, startTime: slot, endTime: "" }));
     } else if (formData.date === dateStr && slot > formData.startTime) {
@@ -123,21 +159,24 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
     }
   };
 
-  const isSlotSelected = (dateStr: string, slot: string) => {
-    if (formData.date !== dateStr) return false;
+  const isSlotSelected = (slot: string) => {
+    if (formData.date !== selectedDateStr) return false;
     if (!formData.endTime) return formData.startTime === slot;
     return slot >= formData.startTime && slot <= formData.endTime;
   };
 
-  const isSlotBooked = (dateStr: string, slot: string) => {
-    return bookedSlots[dateStr]?.includes(slot) ?? false;
+  const isSlotBooked = (slot: string) => {
+    return bookedSlots[selectedDateStr]?.includes(slot) ?? false;
   };
 
-  const isSlotPast = (dateStr: string, slot: string) => {
+  const isSlotPast = (slot: string) => {
     const now = new Date();
-    const slotDate = new Date(dateStr + "T" + slot);
+    const slotDate = new Date(selectedDateStr + "T" + slot);
     return slotDate < now;
   };
+
+  const isPastDay = selectedDate < new Date(new Date().toDateString());
+  const isToday = selectedDateStr === new Date().toISOString().split("T")[0];
 
   const selectedSpace = activeSpaces.find(s => s.name === formData.space);
 
@@ -180,7 +219,20 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
     setFormData(emptyForm);
     setStep(1);
     setWeekOffset(0);
+    setSelectedDayIdx(0);
   }, []);
+
+  const goToPrevWeek = () => {
+    if (weekOffset === 0) return;
+    setWeekOffset(o => o - 1);
+    setFormData(p => ({ ...p, date: "", startTime: "", endTime: "" }));
+    setSelectedDayIdx(0);
+  };
+  const goToNextWeek = () => {
+    setWeekOffset(o => o + 1);
+    setFormData(p => ({ ...p, date: "", startTime: "", endTime: "" }));
+    setSelectedDayIdx(0);
+  };
 
   /* === COLLAPSED === */
   if (!isOpen) {
@@ -233,7 +285,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
             <div>
               <h3 className="text-xl font-black uppercase italic leading-none">
                 {step === 1 && "Помещение"}
-                {step === 2 && "Расписание"}
+                {step === 2 && "Выбор времени"}
                 {step === 3 && "Контакты"}
                 {step === 4 && "Готово!"}
               </h3>
@@ -295,89 +347,120 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
             </div>
           )}
 
-          {/* STEP 2: WEEK SCHEDULE */}
+          {/* STEP 2: CALENDAR */}
           {step === 2 && (
             <div className="space-y-4">
               {/* Week navigation */}
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => { setWeekOffset(o => Math.max(0, o - 1)); setFormData(p => ({ ...p, date: "", startTime: "", endTime: "" })); }}
+                  onClick={goToPrevWeek}
                   disabled={weekOffset === 0}
                   className="p-2 rounded-full bg-gray-100 disabled:opacity-30"
                 >
                   <ChevronLeft size={18} />
                 </button>
                 <span className="text-sm font-bold">
-                  {weekDates[0].toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} –{" "}
-                  {weekDates[6].toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                  {weekDates[0].getDate()} {MONTH_NAMES[weekDates[0].getMonth()]} –{" "}
+                  {weekDates[6].getDate()} {MONTH_NAMES[weekDates[6].getMonth()]}
                 </span>
-                <button
-                  onClick={() => { setWeekOffset(o => o + 1); setFormData(p => ({ ...p, date: "", startTime: "", endTime: "" })); }}
-                  className="p-2 rounded-full bg-gray-100"
-                >
+                <button onClick={goToNextWeek} className="p-2 rounded-full bg-gray-100">
                   <ChevronRight size={18} />
                 </button>
               </div>
 
-              {/* Instruction */}
-              <div className="text-xs text-gray-500 text-center">
-                Выберите начало, затем конец аренды (шаг 30 мин)
+              {/* Day picker row */}
+              <div className="grid grid-cols-7 gap-1">
+                {weekDates.map((date, di) => {
+                  const dateStr = date.toISOString().split("T")[0];
+                  const today = new Date().toISOString().split("T")[0];
+                  const isPast = dateStr < today;
+                  const isSelected = di === selectedDayIdx;
+                  const hasSelection = formData.date === dateStr && formData.startTime;
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => { if (!isPast) setSelectedDayIdx(di); }}
+                      disabled={isPast}
+                      className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all text-center ${
+                        isPast
+                          ? "opacity-30 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-black text-white"
+                          : "bg-gray-50 hover:bg-gray-100"
+                      }`}
+                    >
+                      <span className={`text-[10px] font-bold mb-0.5 ${isSelected ? "text-white/70" : "text-gray-400"}`}>
+                        {DAY_NAMES_SHORT[di]}
+                      </span>
+                      <span className={`text-sm font-black ${isSelected ? "text-white" : ""}`}>
+                        {date.getDate()}
+                      </span>
+                      {hasSelection && !isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-black mt-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Weekly grid - scrollable */}
-              <div className="overflow-x-auto -mx-2 px-2">
-                <div className="flex gap-2 min-w-max">
-                  {weekDates.map((date, di) => {
-                    const dateStr = date.toISOString().split("T")[0];
-                    const isToday = dateStr === new Date().toISOString().split("T")[0];
-                    const isPastDay = date < new Date(new Date().toDateString());
+              {/* Selected day header */}
+              <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                <span className="text-sm font-bold text-gray-700">
+                  {DAY_NAMES_FULL[selectedDayIdx]}, {selectedDate?.getDate()} {MONTH_NAMES[selectedDate?.getMonth()]}
+                  {isToday && <span className="ml-2 text-xs bg-black text-white px-2 py-0.5 rounded-full">Сегодня</span>}
+                </span>
+                <span className="text-xs text-gray-400">шаг 30 мин</span>
+              </div>
+
+              {/* Time slots — 2-column grid */}
+              {isPastDay ? (
+                <div className="text-center py-8 text-gray-400 text-sm">Этот день уже прошёл</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {allSlots.map((slot) => {
+                    const booked = isSlotBooked(slot);
+                    const past = isSlotPast(slot);
+                    const selected = isSlotSelected(slot);
+                    const isStart = formData.date === selectedDateStr && formData.startTime === slot && !formData.endTime;
+                    const isEnd = formData.date === selectedDateStr && formData.endTime === slot;
+                    const isRangeEdge = (formData.date === selectedDateStr) && (formData.startTime === slot || formData.endTime === slot);
+
                     return (
-                      <div key={dateStr} className="flex flex-col gap-1 min-w-[52px]">
-                        {/* Day header */}
-                        <div className={`text-center py-1.5 rounded-xl mb-1 ${isToday ? "bg-black text-white" : "bg-gray-50"}`}>
-                          <div className={`text-[9px] font-bold ${isToday ? "text-white/70" : "text-gray-400"}`}>{DAY_NAMES[di]}</div>
-                          <div className={`text-[11px] font-black ${isToday ? "text-white" : ""}`}>
-                            {date.getDate()}
-                          </div>
-                        </div>
-                        {/* Time slots */}
-                        {allSlots.map((slot) => {
-                          const booked = isSlotBooked(dateStr, slot);
-                          const past = isSlotPast(dateStr, slot) || isPastDay;
-                          const selected = isSlotSelected(dateStr, slot);
-                          const isStart = formData.date === dateStr && formData.startTime === slot;
-                          const isEnd = formData.date === dateStr && formData.endTime === slot;
-                          return (
-                            <button
-                              key={slot}
-                              disabled={booked || past}
-                              onClick={() => handleSlotSelect(dateStr, slot)}
-                              title={slot}
-                              className={`h-7 w-full rounded-lg text-[9px] font-bold transition-all leading-none flex items-center justify-center ${
-                                booked || past
-                                  ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-                                  : isStart || isEnd
-                                  ? "bg-black text-white"
-                                  : selected
-                                  ? "bg-black/20 text-black"
-                                  : "bg-gray-50 hover:bg-gray-200 text-gray-600"
-                              }`}
-                            >
-                              <span>{slot}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <button
+                        key={slot}
+                        disabled={booked || past}
+                        onClick={() => handleSlotSelect(slot)}
+                        className={`h-11 w-full rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          booked || past
+                            ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                            : isRangeEdge
+                            ? "bg-black text-white shadow-md"
+                            : selected
+                            ? "bg-black/15 text-black border border-black/20"
+                            : "bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200"
+                        }`}
+                      >
+                        <span>{slot}</span>
+                        {isStart && <span className="text-[10px] opacity-70">начало</span>}
+                        {isEnd && <span className="text-[10px] opacity-70">конец</span>}
+                        {booked && <span className="text-[10px]">занято</span>}
+                      </button>
                     );
                   })}
                 </div>
-              </div>
+              )}
 
-              {/* Time legend */}
-              <div className="flex gap-2 text-[10px] text-gray-400 justify-center">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-black inline-block"/>Выбрано</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-black/20 inline-block"/>Диапазон</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 inline-block"/>Занято</span>
+              {/* Legend */}
+              <div className="flex gap-3 text-[11px] text-gray-400 justify-center flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-lg bg-black inline-block"/>Выбрано
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-lg bg-black/15 border border-black/20 inline-block"/>Диапазон
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-lg bg-gray-100 inline-block"/>Занято
+                </span>
               </div>
 
               {/* Selected range summary */}
@@ -389,7 +472,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
                       <p className="font-bold text-sm">{formData.date}</p>
                       <p className="text-gray-500 text-sm">
                         {formData.startTime}
-                        {formData.endTime ? ` – ${formData.endTime}` : " (выберите конец)"}
+                        {formData.endTime ? ` – ${formData.endTime}` : " → выберите конец"}
                       </p>
                       {duration > 0 && <p className="text-xs text-gray-400 mt-1">{duration} ч</p>}
                     </div>

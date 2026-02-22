@@ -105,8 +105,16 @@ export default async function BusinessPage({
           <PromotionsWidget promotions={business.promotions} />
         </div>
 
-        <div className="text-center text-white/20 text-xs uppercase tracking-widest pb-8">
-          Powered by Linkalink
+        <div className="text-center pb-8 flex flex-col items-center gap-3">
+          <a
+            href={`https://t.me/linkalink_notify_bot?start=${slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-all text-xs font-medium"
+          >
+            📣 Подписаться на уведомления
+          </a>
+          <p className="text-white/20 text-xs uppercase tracking-widest">Powered by Linkalink</p>
         </div>
       </main>
     </div>
