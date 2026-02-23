@@ -113,9 +113,12 @@ export default function BookingWidget({ services, masters, businessName }: Booki
     setFormData((p) => ({ ...p, date, time: "" }));
     const { data, error } = await supabase
       .from("bookings").select("time")
-      .eq("booking_date", date).eq("master_name", formData.master).neq("status", "cancelled");
+      .eq("business_slug", businessName)
+      .eq("booking_date", date)
+      .eq("master_name", formData.master)
+      .neq("status", "cancelled");
     if (!error && data) setBookedTimes(data.map((b: any) => b.time));
-  }, [formData.master]);
+  }, [formData.master, businessName]);
 
   const handleBook = useCallback(async () => {
     setLoading(true);
@@ -133,6 +136,8 @@ export default function BookingWidget({ services, masters, businessName }: Booki
           clientPhone: formData.phone,
         }),
       });
+      // Блокируем время локально сразу после бронирования
+      setBookedTimes(prev => [...prev, formData.time]);
       setStep(5);
     } catch (e) {
       console.error(e);
@@ -187,7 +192,12 @@ export default function BookingWidget({ services, masters, businessName }: Booki
         <div className="flex items-center justify-between px-6 pt-6 pb-3 shrink-0">
           <div className="flex items-center gap-3">
             {step > 1 && step < 5 && (
-              <button onClick={() => setStep((s) => s - 1)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+              <button onClick={() => {
+                if (step === 2) setFormData(p => ({ ...p, master: "" }));
+                if (step === 3) setFormData(p => ({ ...p, date: "", time: "" }));
+                if (step === 4) setFormData(p => ({ ...p, name: "", phone: "" }));
+                setStep(s => s - 1);
+              }} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
                 <ChevronLeft size={18} />
               </button>
             )}
@@ -342,7 +352,7 @@ export default function BookingWidget({ services, masters, businessName }: Booki
                   </div>
                   {formData.time && (
                     <button onClick={() => setStep(4)}
-                      className="w-full h-14 bg-black text-white rounded-2xl font-bold text-base uppercase tracking-widest active:scale-[0.98] transition-transform">
+                      className="w-full h-14 bg-black text-white rounded-2xl font-bold text-base uppercase tracking-widest active:scale-[0.98] transition-transform flex items-center justify-center">
                       Продолжить →
                     </button>
                   )}
@@ -388,7 +398,7 @@ export default function BookingWidget({ services, masters, businessName }: Booki
                   className="w-full h-14 px-5 bg-gray-50 rounded-2xl border-2 border-gray-100 focus:border-black outline-none font-bold text-base transition-colors" />
               </div>
               <button onClick={handleBook} disabled={!formData.name.trim() || !isPhoneValid || loading}
-                className="w-full h-14 bg-black disabled:bg-gray-300 text-white rounded-2xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
+                className="w-full h-14 bg-black disabled:bg-gray-300 text-white rounded-2xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
                 {loading ? <><Loader2 size={20} className="animate-spin" /> Отправляем...</> : "Записаться"}
               </button>
               <p className="text-center text-xs text-gray-400">Нажимая кнопку, вы соглашаетесь с условиями обработки данных</p>

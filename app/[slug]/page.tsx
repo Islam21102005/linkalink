@@ -73,7 +73,7 @@ export default async function BusinessPage({
               houses={services}
               addons={addons}
               businessName={slug}
-              managerTelegram={business.telegram_chat_id || business.telegram}
+              managerTelegram={business.manager_telegram || business.telegram || ""}
             />
           )}
 

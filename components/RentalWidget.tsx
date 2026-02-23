@@ -99,6 +99,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
         .from("bookings")
         .select("booking_date, time")
         .in("booking_date", dateStrs)
+        .eq("business_slug", formData.space ? businessName : "")
         .ilike("service_name", `%${formData.space}%`)
         .neq("status", "cancelled");
       
@@ -206,6 +207,13 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
           notes: `Длительность: ${duration} ч, Сумма: ${price.toLocaleString("ru-RU")} ₽`,
         }),
       });
+      // Блокируем слоты локально сразу
+      if (formData.date && formData.startTime && formData.endTime) {
+        const newSlots: string[] = [];
+        let m = timeToMins(formData.startTime);
+        while (m <= timeToMins(formData.endTime)) { newSlots.push(minsToTime(m)); m += 30; }
+        setBookedSlots(prev => ({ ...prev, [formData.date]: [...(prev[formData.date] || []), ...newSlots] }));
+      }
       setStep(4);
     } catch (e) {
       console.error(e);
@@ -278,7 +286,11 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
         <div className="flex items-center justify-between px-6 pt-6 pb-3 shrink-0">
           <div className="flex items-center gap-3">
             {step > 1 && step < 4 && (
-              <button onClick={() => setStep(s => s - 1)} className="p-2 bg-gray-100 rounded-full">
+              <button onClick={() => {
+                if (step === 2) setFormData(p => ({ ...p, date: "", startTime: "", endTime: "" }));
+                if (step === 3) setFormData(p => ({ ...p, name: "", phone: "" }));
+                setStep(s => s - 1);
+              }} className="p-2 bg-gray-100 rounded-full">
                 <ChevronLeft size={18} />
               </button>
             )}

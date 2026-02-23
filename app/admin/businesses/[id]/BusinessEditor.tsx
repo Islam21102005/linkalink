@@ -68,6 +68,8 @@ export default function BusinessEditor({
   const [logoUrl, setLogoUrl] = useState(business.logo_url || business.avatar_url || '')
   const [bgImage, setBgImage] = useState(business.bg_image || '')
   const [telegramChatId, setTelegramChatId] = useState(business.telegram_chat_id || '')
+  const [telegramUsername, setTelegramUsername] = useState(business.telegram || '')
+  const [managerTelegram, setManagerTelegram] = useState(business.manager_telegram || '')
   
   // О нас
   const [aboutText, setAboutText] = useState(business.about_text || business.description || '')
@@ -236,7 +238,9 @@ export default function BusinessEditor({
         logo_url: logoUrl, 
         avatar_url: logoUrl, 
         bg_image: bgImage, 
-        telegram_chat_id: telegramChatId, 
+        telegram_chat_id: telegramChatId,
+        telegram: telegramUsername,
+        manager_telegram: managerTelegram, 
         about_text: aboutText, 
         description: aboutText,
         about_address: aboutAddress, 
@@ -459,19 +463,45 @@ export default function BusinessEditor({
                 <option value="glamping">🏕 Глэмпинг</option>
                 <option value="rental">🏢 Аренда помещения</option>
                 <option value="cafe">☕️ Кафе</option>
-                <option value="restaurant">🍽 Ресторан</option>
               </select>
-              {businessType === 'rental' && (
-                <p className="text-xs text-blue-600 mt-1">💡 Для аренды: добавьте помещения в разделе «Услуги». Цена = стоимость за час. Клиент выбирает слоты по 30 мин.</p>
-              )}
+              <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
+                {businessType === 'barbershop' && <p>💈 <b>Барбершоп</b> — запись к мастеру на конкретное время. Клиент выбирает услугу → мастера → дату/время → оставляет контакты.</p>}
+                {businessType === 'salon' && <p>💅 <b>Салон красоты</b> — аналогично барбершопу, запись к мастеру. Отличие в визуальном оформлении и категориях услуг. Подходит для маникюра, причёсок, косметологии.</p>}
+                {businessType === 'glamping' && <p>🏕 <b>Глэмпинг</b> — бронирование домика на даты. Клиент выбирает дом → даты → допуслуги → связывается с менеджером для оплаты. Заблокированные даты подтягиваются автоматически.</p>}
+                {businessType === 'rental' && <p>🏢 <b>Аренда помещения</b> — почасовая аренда. Клиент выбирает помещение → день → временные слоты (шаг 30 мин). Занятое время блокируется автоматически.</p>}
+                {businessType === 'cafe' && <p>☕️ <b>Кафе</b> — запись на столик или оформление заказа. Аналогично барбершопу, мастера = официанты/столики.</p>}
+              </div>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram Chat ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram Chat ID (для уведомлений о записях)</label>
               <input type="text" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} 
                 placeholder="-1001234567890"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              <p className="text-xs text-gray-500 mt-1">Куда будут приходить уведомления о записях</p>
+              <p className="text-xs text-gray-500 mt-1">Числовой ID чата или группы — куда приходят уведомления о записях</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram username бизнеса</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">@</span>
+                <input type="text" value={telegramUsername} onChange={(e) => setTelegramUsername(e.target.value.replace('@', ''))} 
+                  placeholder="myhospital_bot или username"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Username аккаунта или бота (без @). Используется как менеджер по умолчанию</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram менеджера (для оплаты глэмпинга)</label>
+              <input type="text" value={managerTelegram} onChange={(e) => setManagerTelegram(e.target.value)} 
+                placeholder="ivan_manager (без @)"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+              <p className="text-xs text-gray-500 mt-1">
+                Username администратора без @ (например: <code className="bg-gray-100 px-1 rounded">ivan_manager</code>). 
+                Клиент нажимает «Связаться для оплаты» и попадает к нему в диалог. 
+                Если пусто — используется поле «Telegram» выше.
+              </p>
             </div>
             
             <div>
@@ -688,23 +718,28 @@ export default function BusinessEditor({
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Название</label>
                       <input type="text" value={s.name} onChange={(e) => updateService(i, 'name', e.target.value)} 
-                        placeholder="Стрижка мужская" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                        placeholder={businessType === 'glamping' ? 'Домик «Берёза»' : businessType === 'rental' ? 'Большой зал' : 'Стрижка мужская'} 
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                     </div>
+                    {businessType !== 'glamping' && businessType !== 'rental' && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Категория</label>
+                        <input type="text" value={s.category || ''} onChange={(e) => updateService(i, 'category', e.target.value)} 
+                          placeholder="Стрижки" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                      </div>
+                    )}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Категория</label>
-                      <input type="text" value={s.category || ''} onChange={(e) => updateService(i, 'category', e.target.value)} 
-                        placeholder="Стрижки" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Цена (₽)</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Цена (₽{businessType === 'glamping' ? ' / ночь' : businessType === 'rental' ? ' / час' : ''})</label>
                       <input type="number" value={s.price || 0} onChange={(e) => updateService(i, 'price', +e.target.value)} 
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Длительность (мин)</label>
-                      <input type="number" value={s.duration_minutes || 30} onChange={(e) => updateService(i, 'duration_minutes', +e.target.value)} 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
-                    </div>
+                    {businessType !== 'glamping' && businessType !== 'rental' && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Длительность (мин)</label>
+                        <input type="number" value={s.duration_minutes || 30} onChange={(e) => updateService(i, 'duration_minutes', +e.target.value)} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+                      </div>
+                    )}
                   </div>
                   
                   <div>
