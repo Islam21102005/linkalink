@@ -93,7 +93,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
 
   // ── date click ───────────────────────────────────────────
   const handleDate = (day: number) => {
-    const dateStr = new Date(year, month, day + 1).toISOString().split("T")[0];
+    const dateStr = new Date(year, month, day).toISOString().split("T")[0];
     const clicked = new Date(year, month, day);
     const now = new Date(); now.setHours(0, 0, 0, 0);
     if (clicked < now || blockedDates.includes(dateStr)) return;
@@ -383,7 +383,7 @@ export default function GlampingWidget({ houses, addons, businessName, managerTe
                   {Array.from({ length: offset }).map((_, i) => <div key={`e${i}`} />)}
                   {Array.from({ length: days }).map((_, i) => {
                     const day = i + 1;
-                    const dateStr = new Date(year, month, day + 1).toISOString().split("T")[0];
+                    const dateStr = new Date(year, month, day).toISOString().split("T")[0];
                     const blocked = blockedDates.includes(dateStr);
                     const isSel = booking.startDate?.getDate() === day && booking.startDate?.getMonth() === month
                       || booking.endDate?.getDate() === day && booking.endDate?.getMonth() === month;

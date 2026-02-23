@@ -68,8 +68,7 @@ export default function BusinessEditor({
   const [logoUrl, setLogoUrl] = useState(business.logo_url || business.avatar_url || '')
   const [bgImage, setBgImage] = useState(business.bg_image || '')
   const [telegramChatId, setTelegramChatId] = useState(business.telegram_chat_id || '')
-  const [telegramUsername, setTelegramUsername] = useState(business.telegram || '')
-  const [managerTelegram, setManagerTelegram] = useState(business.manager_telegram || '')
+  const [managerTelegram, setManagerTelegram] = useState(business.manager_telegram || business.telegram || '')
   
   // О нас
   const [aboutText, setAboutText] = useState(business.about_text || business.description || '')
@@ -239,7 +238,6 @@ export default function BusinessEditor({
         avatar_url: logoUrl, 
         bg_image: bgImage, 
         telegram_chat_id: telegramChatId,
-        telegram: telegramUsername,
         manager_telegram: managerTelegram, 
         about_text: aboutText, 
         description: aboutText,
@@ -473,35 +471,60 @@ export default function BusinessEditor({
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram Chat ID (для уведомлений о записях)</label>
-              <input type="text" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} 
-                placeholder="-1001234567890"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              <p className="text-xs text-gray-500 mt-1">Числовой ID чата или группы — куда приходят уведомления о записях</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram username бизнеса</label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">@</span>
-                <input type="text" value={telegramUsername} onChange={(e) => setTelegramUsername(e.target.value.replace('@', ''))} 
-                  placeholder="myhospital_bot или username"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📲</span>
+                <div>
+                  <h4 className="font-bold text-blue-900 text-sm">Telegram-настройки</h4>
+                  <p className="text-xs text-blue-700 mt-0.5">Два разных поля с разными задачами — заполните оба</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Username аккаунта или бота (без @). Используется как менеджер по умолчанию</p>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Telegram менеджера (для оплаты глэмпинга)</label>
-              <input type="text" value={managerTelegram} onChange={(e) => setManagerTelegram(e.target.value)} 
-                placeholder="ivan_manager (без @)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              <p className="text-xs text-gray-500 mt-1">
-                Username администратора без @ (например: <code className="bg-gray-100 px-1 rounded">ivan_manager</code>). 
-                Клиент нажимает «Связаться для оплаты» и попадает к нему в диалог. 
-                Если пусто — используется поле «Telegram» выше.
-              </p>
+              {/* FIELD 1: Chat ID for notifications */}
+              <div className="bg-white rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔔</span>
+                  <label className="text-sm font-bold text-gray-800">Куда приходят уведомления о записях</label>
+                </div>
+                <input
+                  type="text"
+                  value={telegramChatId}
+                  onChange={(e) => setTelegramChatId(e.target.value)}
+                  placeholder="-1001234567890"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 font-mono text-sm"
+                />
+                <div className="text-xs text-gray-500 space-y-1 pt-1">
+                  <p>Это <b>числовой ID</b> вашего Telegram-чата или личного аккаунта.</p>
+                  <p>Когда клиент оформляет запись — бот <code className="bg-gray-100 px-1 rounded">@linkalink_notify_bot</code> отправит сообщение туда.</p>
+                  <p className="text-blue-600 font-medium">Как узнать свой ID: напишите боту <code className="bg-blue-50 px-1 rounded">@userinfobot</code> в Telegram — он пришлёт ваш числовой ID.</p>
+                  <p>Для группы/канала: добавьте бота в группу, сделайте его администратором, затем перешлите любое сообщение из группы боту <code className="bg-gray-100 px-1 rounded">@getidsbot</code>.</p>
+                </div>
+              </div>
+
+              {/* FIELD 2: Manager username (glamping only) */}
+              {businessType === 'glamping' && (
+                <div className="bg-white rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">💬</span>
+                    <label className="text-sm font-bold text-gray-800">Username менеджера для оплаты</label>
+                  </div>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-mono">@</span>
+                    <input
+                      type="text"
+                      value={managerTelegram}
+                      onChange={(e) => setManagerTelegram(e.target.value.replace('@', '').trim())}
+                      placeholder="ivan_manager"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-2 focus:ring-blue-400 font-mono text-sm"
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 space-y-1 pt-1">
+                    <p>Это <b>username</b> (логин) аккаунта менеджера в Telegram, без @.</p>
+                    <p>После выбора дат клиент нажимает кнопку «Связаться для оплаты» — открывается диалог с <b>этим</b> аккаунтом. Туда приходит готовое сообщение с деталями брони.</p>
+                    <p>Это отдельно от уведомлений: уведомление приходит боту по Chat ID выше, а клиент пишет напрямую менеджеру сюда.</p>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div>

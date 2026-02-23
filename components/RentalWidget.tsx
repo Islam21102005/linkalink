@@ -99,7 +99,7 @@ export default function RentalWidget({ spaces, businessName, pricePerHour = true
         .from("bookings")
         .select("booking_date, time")
         .in("booking_date", dateStrs)
-        .eq("business_slug", formData.space ? businessName : "")
+        .eq("business_slug", businessName)
         .ilike("service_name", `%${formData.space}%`)
         .neq("status", "cancelled");
       
