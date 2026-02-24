@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Building2, LogOut, Settings } from 'lucide-react'
+import { Home, Building2, LogOut, Settings, BarChart2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -20,6 +20,7 @@ export default function Sidebar({ user }: { user: any }) {
   const links = [
     { href: '/admin', label: 'Главная', icon: Home },
     { href: '/admin/businesses', label: 'Бизнесы', icon: Building2 },
+    { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2 },
     { href: '/admin/settings', label: 'Настройки', icon: Settings },
   ]
 

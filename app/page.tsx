@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import React from "react";
+import AnalyticsTracker from '@/components/AnalyticsTracker'
 
 // --- ШРИФТЫ ---
 const akony = localFont({
@@ -155,7 +156,8 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen w-full relative text-gray-900 selection:bg-blue-500/20 overflow-x-hidden">
+      <div className="min-h-screen w-full relative text-gray-900 selection:bg-blue-500/20 overflow-x-hidden">
+        <AnalyticsTracker page="landing" />
       
       {/* Fixed Background Layer */}
       <div className="fixed inset-0 z-0 bg-white">

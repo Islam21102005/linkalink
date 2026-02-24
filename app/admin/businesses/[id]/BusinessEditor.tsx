@@ -461,6 +461,7 @@ export default function BusinessEditor({
                 <option value="glamping">🏕 Глэмпинг</option>
                 <option value="rental">🏢 Аренда помещения</option>
                 <option value="cafe">☕️ Кафе</option>
+                <option value="linkalink">🔗 Linkalink (страница со ссылками)</option>
               </select>
               <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
                 {businessType === 'barbershop' && <p>💈 <b>Барбершоп</b> — запись к мастеру на конкретное время. Клиент выбирает услугу → мастера → дату/время → оставляет контакты.</p>}

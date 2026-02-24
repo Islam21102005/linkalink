@@ -6,6 +6,8 @@ import RentalWidget from "@/components/RentalWidget";
 import AboutWidget from "@/components/AboutWidget";
 import PromotionsWidget from "@/components/PromotionsWidget";
 import TrackingSocials from "@/components/TrackingSocials";
+import LinkaLinkWidget from "@/components/LinkaLinkWidget";
+
 
 export default async function BusinessPage({
   params,
@@ -37,7 +39,8 @@ export default async function BusinessPage({
 
   const isGlamping = business.business_type === "glamping";
   const isRental = business.business_type === "rental";
-  const isService = !isGlamping && !isRental;
+  const isLinkaLink = business.business_type === "linkalink";
+  const isService = !isGlamping && !isRental && !isLinkaLink;
 
   return (
     <div
@@ -60,60 +63,70 @@ export default async function BusinessPage({
           <p className="text-white/70 text-sm font-medium mb-6 uppercase tracking-widest">
             {business.short_description || (business.description ? business.description.slice(0, 60) : "Добро пожаловать")}
           </p>
-          <TrackingSocials business={business} />
+          {!isLinkaLink && <TrackingSocials business={business} />}
         </div>
 
         {/* MAIN CONTENT */}
         <div className="flex-1 flex flex-col gap-4 pb-12">
-          <AboutWidget business={business} />
-
-          {/* BOOKING WIDGET BASED ON BUSINESS TYPE */}
-          {isGlamping && (
-            <GlampingWidget
-              houses={services}
-              addons={addons}
-              businessName={slug}
-              managerTelegram={business.manager_telegram || business.telegram || ""}
-            />
+          {/* LinkaLink — full link-in-bio mode */}
+          {isLinkaLink && (
+            <LinkaLinkWidget business={business} />
           )}
 
-          {isRental && (
-            <RentalWidget
-              spaces={services}
-              businessName={slug}
-            />
-          )}
+          {/* Other business types */}
+          {!isLinkaLink && (
+            <>
+              <AboutWidget business={business} />
 
-          {isService && (
-            <BookingWidget
-              services={services}
-              masters={masters}
-              businessName={slug}
-            />
-          )}
+              {isGlamping && (
+                <GlampingWidget
+                  houses={services}
+                  addons={addons}
+                  businessName={slug}
+                  managerTelegram={business.manager_telegram || business.telegram || ""}
+                />
+              )}
 
-          {/* ADDONS INFO SECTION (for service businesses with addon details) */}
-          {isService && addons.filter((a: any) => a.show_details && a.is_active !== false).length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-white/60 text-xs uppercase tracking-widest font-bold text-center">Дополнительные услуги</h2>
-              {addons.filter((a: any) => a.show_details && a.is_active !== false).map((addon: any) => (
-                <AddonCard key={addon.id} addon={addon} />
-              ))}
-            </div>
-          )}
+              {isRental && (
+                <RentalWidget
+                  spaces={services}
+                  businessName={slug}
+                />
+              )}
 
-          <PromotionsWidget promotions={business.promotions} />
+              {isService && (
+                <BookingWidget
+                  services={services}
+                  masters={masters}
+                  businessName={slug}
+                />
+              )}
+
+              {isService && addons.filter((a: any) => a.show_details && a.is_active !== false).length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-white/60 text-xs uppercase tracking-widest font-bold text-center">Дополнительные услуги</h2>
+                  {addons.filter((a: any) => a.show_details && a.is_active !== false).map((addon: any) => (
+                    <AddonCard key={addon.id} addon={addon} />
+                  ))}
+                </div>
+              )}
+
+              <PromotionsWidget promotions={business.promotions} />
+            </>
+          )}
         </div>
 
         <div className="text-center pb-8 flex flex-col items-center gap-3">
-          <a
-            href={`https://t.me/linkalink_notify_bot?start=${slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-all text-xs font-medium"
-          >
-            📣 Подписаться на уведомления
-          </a>
+          {!isLinkaLink && (
+            <a
+              href={`https://t.me/linkalink_notify_bot?start=${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-all text-xs font-medium"
+            >
+              📣 Подписаться на уведомления
+            </a>
+          )}
           <p className="text-white/20 text-xs uppercase tracking-widest">Powered by Linkalink</p>
         </div>
       </main>
