@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  AreaChart, Area, BarChart, Bar, FunnelChart, Funnel, LabelList,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts'
 import {
   Users, Eye, RefreshCw, Smartphone, Monitor, Tablet,
   Globe, TrendingUp, CalendarCheck, Clock, MousePointer,
-  ArrowDownUp, Zap, Activity
+  ArrowDownUp, Zap, Activity, HelpCircle, X
 } from 'lucide-react'
 
 type Period = 'day' | 'week' | 'month' | 'quarter' | 'half' | 'all'
@@ -28,7 +28,49 @@ const EVENT_LABELS: Record<string, string> = {
 const PALETTE = ['#a855f7', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#10b981']
 const DEVICE_COLORS: Record<string, string> = { mobile: '#a855f7', desktop: '#6366f1', tablet: '#ec4899', unknown: '#9ca3af' }
 
+// Подсказки для каждой метрики
+const METRIC_HINTS: Record<string, string> = {
+  visits: 'Общее число загрузок страницы. Один человек, зашедший трижды, даст 3 визита.',
+  unique: 'Число отдельных браузерных сессий. Грубо говоря — сколько разных людей зашло на сайт.',
+  returning: 'Посетители, которые уже были на сайте раньше (в предыдущем периоде) и вернулись снова. Высокий показатель — признак лояльности аудитории.',
+  engaged: 'Сессии, в которых пользователь провёл на сайте более 30 секунд. Это реальный интерес, а не случайный заход.',
+  bounce: 'Процент сессий, где пользователь ушёл не проскроллив страницу и не совершив действий. Норма: 40–60%. Выше 70% — сигнал проблемы.',
+  scroll: 'Средняя глубина прокрутки страницы по всем сессиям. 50%+ означает что пользователи доходят до середины страницы.',
+  time: 'Среднее время, проведённое пользователем на странице. Чем выше — тем интереснее контент.',
+  conversion: 'Отношение числа оформленных записей к числу уникальных сессий. Показывает насколько эффективно сайт превращает посетителей в клиентов.',
+  events: 'Все отслеживаемые действия пользователей: просмотры, скролл, вовлечённость и другие.',
+}
+
+// Tooltip-подсказка
+function Hint({ id }: { id: string }) {
+  const [open, setOpen] = useState(false)
+  const text = METRIC_HINTS[id]
+  if (!text) return null
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="text-gray-300 hover:text-gray-500 transition-colors ml-1"
+      >
+        <HelpCircle size={13} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute z-50 left-0 top-6 w-64 bg-gray-900 text-white text-xs rounded-xl p-3 shadow-2xl leading-relaxed">
+            {text}
+            <button onClick={() => setOpen(false)} className="absolute top-2 right-2 opacity-50 hover:opacity-100">
+              <X size={11} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function formatTime(seconds: number): string {
+  if (!seconds) return '0с'
   if (seconds < 60) return `${seconds}с`
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -41,8 +83,9 @@ function formatDateLabel(dateStr: string, period: Period) {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-function StatCard({ label, value, icon: Icon, sub, accent = false, color = '' }: {
-  label: string; value: string | number; icon: any; sub?: string; accent?: boolean; color?: string
+function StatCard({ label, value, icon: Icon, sub, accent = false, color = '', hintId = '' }: {
+  label: string; value: string | number; icon: any; sub?: string
+  accent?: boolean; color?: string; hintId?: string
 }) {
   return (
     <div className={`rounded-2xl p-5 border shadow-sm flex items-start gap-4 ${
@@ -53,9 +96,12 @@ function StatCard({ label, value, icon: Icon, sub, accent = false, color = '' }:
       }`}>
         <Icon size={18} className={color || (accent ? 'text-purple-500' : 'text-gray-400')} />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xl font-bold text-gray-900 truncate">{value}</p>
-        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <div className="flex items-center">
+          <p className="text-sm font-medium text-gray-700">{label}</p>
+          {hintId && <Hint id={hintId} />}
+        </div>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -102,11 +148,10 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
 
   return (
     <div className="p-8 max-w-7xl">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-500 mt-1">Посещаемость, вовлечённость и конверсии</p>
+          <p className="text-gray-500 mt-1 text-sm">Наведите на <HelpCircle size={12} className="inline text-gray-400" /> рядом с показателем для объяснения</p>
         </div>
         <button onClick={fetchData}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium shadow-sm transition-colors">
@@ -114,7 +159,6 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
         </button>
       </div>
 
-      {/* Period */}
       <div className="flex gap-2 mb-8 flex-wrap">
         {(Object.keys(PERIOD_LABELS) as Period[]).map(p => (
           <button key={p} onClick={() => setPeriod(p)}
@@ -136,28 +180,28 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
 
       {!loading && data && (
         <>
-          {/* ── БЛОК 1: Основные метрики ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Визиты" value={data.totalVisits} icon={Eye} sub="Всего pageview" />
-            <StatCard label="Уникальных" value={data.uniqueSessions} icon={Users} sub="Отдельных сессий" />
-            <StatCard label="Вернулись" value={`${data.returningCount} (${returnRate}%)`} icon={TrendingUp} sub="Повторные визиты" />
-            <StatCard label="Вовлечённых" value={`${data.engagedSessions} (${engageRate}%)`} icon={Zap} sub="30+ сек на сайте" accent />
+          {/* Блок 1: Основные метрики */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <StatCard label="Визиты" value={data.totalVisits} icon={Eye} sub="Всего загрузок страницы" hintId="visits" />
+            <StatCard label="Уникальных" value={data.uniqueSessions} icon={Users} sub="Отдельных сессий" hintId="unique" />
+            <StatCard label="Вернулись" value={`${data.returningCount} (${returnRate}%)`} icon={TrendingUp} sub="Повторные визиты" hintId="returning" />
+            <StatCard label="Вовлечённых" value={`${data.engagedSessions} (${engageRate}%)`} icon={Zap} sub="30+ сек на сайте" accent hintId="engaged" />
           </div>
 
-          {/* ── БЛОК 2: Поведенческие метрики ── */}
+          {/* Блок 2: Поведение */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard label="Отказы" value={`${data.bounceRate}%`} icon={MousePointer}
-              sub="Без скролла и взаимодействия"
+              sub="Ушли без действий" hintId="bounce"
               color={data.bounceRate > 60 ? 'text-red-400' : data.bounceRate > 40 ? 'text-amber-400' : 'text-green-500'} />
-            <StatCard label="Глубина скролла" value={`${data.avgScrollDepth}%`} icon={ArrowDownUp} sub="Средняя по сессиям" />
-            <StatCard label="Время на сайте" value={formatTime(data.avgTimeOnSite)} icon={Clock} sub="Среднее по сессиям" />
+            <StatCard label="Глубина скролла" value={`${data.avgScrollDepth}%`} icon={ArrowDownUp} sub="Средняя по сессиям" hintId="scroll" />
+            <StatCard label="Время на сайте" value={formatTime(data.avgTimeOnSite)} icon={Clock} sub="Среднее по сессиям" hintId="time" />
             {page !== 'landing'
-              ? <StatCard label="Конверсия" value={`${data.conversions} (${convRate}%)`} icon={CalendarCheck} sub="Записи / уник. сессии" accent />
-              : <StatCard label="События" value={data.topEvents.reduce((a, b) => a + b.count, 0)} icon={Activity} sub="Всего событий" />
+              ? <StatCard label="Конверсия" value={`${data.conversions} (${convRate}%)`} icon={CalendarCheck} sub="Записи / сессии" accent hintId="conversion" />
+              : <StatCard label="Все события" value={data.topEvents.reduce((a, b) => a + b.count, 0)} icon={Activity} sub="Всего действий" hintId="events" />
             }
           </div>
 
-          {/* ── БЛОК 3: График посещаемости ── */}
+          {/* График по дням */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm mb-6">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Посещаемость по дням</h2>
             {dailyData.length > 0 ? (
@@ -180,11 +224,13 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
             )}
           </div>
 
-          {/* ── БЛОК 4: Скролл-воронка + Часы ── */}
+          {/* Скролл-воронка + часы */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Scroll funnel */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Глубина просмотра</h2>
+              <div className="flex items-center gap-1 mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Глубина просмотра</h2>
+                <Hint id="scroll" />
+              </div>
               <div className="space-y-2.5">
                 {(data.scrollFunnel || []).map((item, i) => {
                   const max = data.scrollFunnel[0]?.count || 1
@@ -204,7 +250,6 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
               </div>
             </div>
 
-            {/* Hourly bar chart */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Активность по времени суток</h2>
               <ResponsiveContainer width="100%" height={160}>
@@ -222,11 +267,10 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
             </div>
           </div>
 
-          {/* ── БЛОК 5: Устройства + Источники ── */}
+          {/* Устройства + источники */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Devices pie */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Типы устройств</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Устройства</h2>
               {data.devices.length > 0 ? (
                 <div className="flex items-center gap-6">
                   <ResponsiveContainer width={120} height={120}>
@@ -260,11 +304,10 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
               )}
             </div>
 
-            {/* Sources */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                <Globe size={13} /> Источники трафика
-              </h2>
+              <div className="flex items-center gap-1 mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Источники трафика</h2>
+              </div>
               {data.sources.length > 0 ? (
                 <div className="space-y-3">
                   {[...data.sources].sort((a, b) => b.count - a.count).map((s, i) => {
@@ -274,13 +317,19 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
                       <div key={s.source} className="flex items-center gap-3">
                         <span className="text-sm text-gray-600 w-20 flex-shrink-0">{SOURCE_LABELS[s.source] || s.source}</span>
                         <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: PALETTE[i % PALETTE.length], transition: 'width .6s ease' }} />
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: PALETTE[i % PALETTE.length] }} />
                         </div>
                         <span className="text-sm font-semibold text-gray-900 w-8 text-right">{s.count}</span>
                         <span className="text-xs text-gray-400 w-9 text-right">{pct}%</span>
                       </div>
                     )
                   })}
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs text-gray-400">
+                    <p><span className="font-medium text-gray-600">Прямой</span> — зашли напрямую или из закладок</p>
+                    <p><span className="font-medium text-gray-600">Поиск</span> — пришли из Google, Яндекс и т.д.</p>
+                    <p><span className="font-medium text-gray-600">Соцсети</span> — Instagram, ВК, Telegram и т.д.</p>
+                    <p><span className="font-medium text-gray-600">Реферал</span> — перешли по ссылке с другого сайта</p>
+                  </div>
                 </div>
               ) : (
                 <div className="h-20 flex items-center justify-center text-gray-400 text-sm">Нет данных</div>
@@ -288,14 +337,15 @@ export default function AnalyticsDashboard({ page = 'landing', title = 'Анал
             </div>
           </div>
 
-          {/* ── БЛОК 6: Все события ── */}
+          {/* Все события */}
           {data.topEvents.length > 0 && (
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                <Activity size={13} /> Все события
-              </h2>
+              <div className="flex items-center gap-1 mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Все события</h2>
+                <Hint id="events" />
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {data.topEvents.map((e, i) => (
+                {data.topEvents.map((e) => (
                   <div key={e.event} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                     <p className="text-xl font-bold text-gray-900">{e.count}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{EVENT_LABELS[e.event] || e.event}</p>

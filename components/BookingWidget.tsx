@@ -111,13 +111,18 @@ export default function BookingWidget({ services, masters, businessName }: Booki
 
   const handleDateSelect = useCallback(async (date: string) => {
     setFormData((p) => ({ ...p, date, time: "" }));
-    const { data, error } = await supabase
+    // Блокируем слоты: если мастер выбран — только его слоты,
+    // если нет — все занятые слоты на эту дату
+    let q = supabase
       .from("bookings").select("time")
       .eq("business_slug", businessName)
       .eq("booking_date", date)
-      .eq("master_name", formData.master)
       .neq("status", "cancelled");
-    if (!error && data) setBookedTimes(data.map((b: any) => b.time));
+    if (formData.master) {
+      q = q.eq("master_name", formData.master);
+    }
+    const { data, error } = await q;
+    if (!error && data) setBookedTimes(data.map((b: any) => b.time).filter(Boolean));
   }, [formData.master, businessName]);
 
   const handleBook = useCallback(async () => {
